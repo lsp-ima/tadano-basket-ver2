@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>忠生中バスケ部 作戦盤</title>
+<style>
+  :root{
+    --court:#c8965a; --line:rgba(255,255,255,0.92); --border:#3aa6b9;
+    --bg:#1c2127; --panel:#262c34; --text:#e8eaed; --muted:#9aa0a6;
+    --blue:#1976d2; --red:#d32f2f; --ball:#ef6c00; --accent:#3aa6b9;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,"Hiragino Sans","Yu Gothic",sans-serif;
+    display:flex;flex-direction:column;align-items:center;padding:16px;gap:14px}
+  h1{font-size:18px;font-weight:600;margin:0}
+  canvas{display:block;border-radius:10px;touch-action:none;
+    box-shadow:0 4px 16px rgba(0,0,0,.4);max-width:100%}
+  .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center}
+  button,select{font-size:13px;padding:8px 14px;border-radius:8px;
+    border:1px solid #3a414b;background:var(--panel);color:var(--text);
+    cursor:pointer;font-family:inherit}
+  input[type=text]{font-size:13px;padding:8px 12px;border-radius:8px;
+    border:1px solid #3a414b;background:#1f242b;color:var(--text);font-family:inherit;min-width:160px}
+  .myplay{display:inline-flex;align-items:center;gap:0;margin:4px 6px 0 0}
+  .myplay button{background:#2d343d;border-radius:8px 0 0 8px}
+  .myplay button.active{background:var(--accent);color:#fff}
+  .myplay .del{padding:8px 10px;border-radius:0 8px 8px 0;border-left:none;
+    background:#3a2326;color:#ff9a9a}
+  .myplay .del:hover{background:var(--red);color:#fff}
+  button:hover{background:#30373f}
+  button.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  button.rec{background:var(--red);border-color:var(--red);color:#fff}
+  .seg{display:flex;border:1px solid #3a414b;border-radius:8px;overflow:hidden}
+  .seg button{border:none;border-radius:0}
+  .label{font-size:12px;color:var(--muted)}
+  .legend{display:flex;gap:16px;font-size:12px;color:var(--muted);flex-wrap:wrap;justify-content:center}
+  .legend span{display:flex;align-items:center;gap:5px}
+  .dot{width:11px;height:11px;border-radius:50%;display:inline-block}
+  .plays{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .plays button{background:#2d343d}
+  .plays button.active{background:var(--accent);color:#fff}
+  #playButtons{display:flex;flex-direction:column;gap:10px;width:100%}
+  .play-group{display:flex;flex-direction:column;gap:6px}
+  .cat-label{font-size:11px;color:var(--accent);font-weight:700;letter-spacing:.04em}
+  fieldset{border:1px solid #333b44;border-radius:10px;padding:10px 14px;margin:0}
+  legend{font-size:12px;color:var(--muted);padding:0 6px}
+</style>
+</head>
+<body>
+<h1>忠生中バスケ部 作戦盤</h1>
+
+<div class="seg">
+  <button class="active" id="btnHalf" onclick="setCourt('half')">ハーフコート</button>
+  <button id="btnFull" onclick="setCourt('full')">フルコート</button>
+</div>
+
+<canvas id="court"></canvas>
+
+<fieldset>
+  <legend>戦術プリセット（自動再生）</legend>
+  <div id="playButtons"></div>
+</fieldset>
+
+<div class="row">
+  <button id="btnRec" onclick="toggleRecord()">● 自分で記録</button>
+  <button id="btnPlay" onclick="play()" disabled>▶ 再生</button>
+  <button id="btnStop" onclick="stop()" style="display:none">■ 停止</button>
+  <button onclick="clearPaths()">経路クリア</button>
+  <button onclick="resetPositions()">リセット</button>
+  <select id="speed" onchange="speed=parseFloat(this.value)">
+    <option value="0.1">0.1x</option>
+    <option value="0.2">0.2x</option>
+    <option value="0.3">0.3x</option>
+    <option value="0.4">0.4x</option>
+    <option value="0.5">0.5x</option>
+    <option value="1" selected>1x</option>
+    <option value="1.5">1.5x</option>
+    <option value="2">2x</option>
+  </select>
+</div>
+<div class="label" id="status">選手・ボールをドラッグして配置できます</div>
+
+<fieldset id="saveBox" style="display:none">
+  <legend>記録したプレーを保存</legend>
+  <div class="row">
+    <input id="playName" type="text" placeholder="プレー名（例：右P&R）" maxlength="20">
+    <button id="btnSave" onclick="saveCurrentPlay()">💾 保存</button>
+    <span class="label">記録 →（名前）→ 保存でマイプレーに追加されます</span>
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend>マイプレー（自分で保存したもの）</legend>
+  <div id="myPlayButtons"><span class="label" id="myEmpty">まだありません。「● 自分で記録」→ ドラッグ → 保存で追加できます。</span></div>
+  <div class="row" style="margin-top:8px">
+    <button onclick="exportPlays()">⬇ バックアップを書き出す</button>
+    <button onclick="document.getElementById('importFile').click()">⬆ 読み込む</button>
+    <input id="importFile" type="file" accept="application/json" style="display:none" onchange="importPlays(event)">
+  </div>
+</fieldset>
+
+<div class="legend">
+  <span><span class="dot" style="background:var(--blue)"></span> オフェンス 1–5</span>
+  <span><span class="dot" style="background:var(--red)"></span> ディフェンス 1–5</span>
+  <span><span class="dot" style="background:var(--ball)"></span> ボール</span>
+  <span>—— 移動 ‑‑‑ パス</span>
+</div>
+
+<script>
+const canvas = document.getElementById('court');
+const ctx = canvas.getContext('2d');
+
+/* ===== 実寸（メートル）ベースの座標系 ===== */
+const HALF = {wm:15, lm:14};   // ハーフ
+const FULL = {wm:28, lm:15};   // フル
+
+let courtMode='half', scale=1, padPx=22, W=680, H=560;
+let speed=1, recording=false, animating=false, raf=null;
+let drag=null, dragOff={x:0,y:0};
+const R_PLAYER = 0.46; // m
+
+let offense=[], defense=[], ball={m:[7.5,2.2]};
+let players=[]; 
+let paths=[], ballPath=[];
+
+function mx(m){ return padPx + m*scale; }
+function my(m){ return padPx + m*scale; }
+function px2m(px,py){ return [ (px-padPx)/scale, (py-padPx)/scale ]; }
+
+function layout(){
+  const conf = courtMode==='half'?HALF:FULL;
+  const maxW = 680;
+  scale = (maxW - padPx*2) / conf.wm;
+  W = maxW;
+  H = conf.lm*scale + padPx*2;
+  canvas.width=W; canvas.height=H;
+}
+
+/* ================= コート描画 ================= */
+function line(w){ ctx.strokeStyle='rgba(255,255,255,0.92)'; ctx.lineWidth=w||2; }
+
+function drawHalf(){
+  const w=HALF.wm, l=HALF.lm;
+  ctx.fillStyle='#c8965a'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#3aa6b9'; ctx.lineWidth=5; ctx.strokeRect(2.5,2.5,W-5,H-5);
+  line(2.5);
+  ctx.strokeRect(mx(0),my(0),w*scale,l*scale);
+
+  const cx=w/2;            
+  const basketY=1.575;     
+  ctx.beginPath();ctx.moveTo(mx(cx-0.9),my(1.2));ctx.lineTo(mx(cx+0.9),my(1.2));ctx.stroke();
+  ctx.beginPath();ctx.arc(mx(cx),my(basketY),0.225*scale,0,7);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(mx(cx),my(1.2));ctx.lineTo(mx(cx),my(basketY-0.225));ctx.stroke();
+
+  const keyW=4.9, ftY=5.8;
+  ctx.strokeRect(mx(cx-keyW/2),my(0),keyW*scale,ftY*scale);
+  ctx.beginPath();ctx.arc(mx(cx),my(ftY),1.8*scale,0,Math.PI);ctx.stroke();
+  ctx.setLineDash([7,7]);
+  ctx.beginPath();ctx.arc(mx(cx),my(ftY),1.8*scale,Math.PI,2*Math.PI);ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.beginPath();ctx.arc(mx(cx),my(basketY),1.25*scale,0,Math.PI);ctx.stroke();
+
+  const r3=6.75, cornerX=0.9;
+  const dx = (cx-cornerX);
+  const yAtArc = basketY + Math.sqrt(Math.max(0,r3*r3 - dx*dx));
+  ctx.beginPath();ctx.moveTo(mx(cornerX),my(0));ctx.lineTo(mx(cornerX),my(yAtArc));ctx.stroke();
+  ctx.beginPath();ctx.moveTo(mx(w-cornerX),my(0));ctx.lineTo(mx(w-cornerX),my(yAtArc));ctx.stroke();
+  const a0=Math.atan2(yAtArc-basketY, -dx); 
+  const a1=Math.atan2(yAtArc-basketY, dx);  
+  ctx.beginPath();ctx.arc(mx(cx),my(basketY),r3*scale, a1, a0);ctx.stroke();
+
+  ctx.beginPath();ctx.arc(mx(cx),my(l),1.8*scale,Math.PI,2*Math.PI);ctx.stroke();
+}
+
+function drawFull(){
+  const w=FULL.wm, l=FULL.lm; 
+  ctx.fillStyle='#c8965a'; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#3aa6b9'; ctx.lineWidth=5; ctx.strokeRect(2.5,2.5,W-5,H-5);
+  line(2.5);
+  ctx.strokeRect(mx(0),my(0),w*scale,l*scale);
+  const cy=l/2;
+  ctx.beginPath();ctx.moveTo(mx(w/2),my(0));ctx.lineTo(mx(w/2),my(l));ctx.stroke();
+  ctx.beginPath();ctx.arc(mx(w/2),my(cy),1.8*scale,0,7);ctx.stroke();
+
+  for(let s=0;s<2;s++){
+    const dir = s===0?1:-1;
+    const baseX = s===0?0:w;                 
+    const bx = baseX + dir*1.575;            
+    ctx.beginPath();ctx.moveTo(mx(baseX+dir*1.2),my(cy-0.9));ctx.lineTo(mx(baseX+dir*1.2),my(cy+0.9));ctx.stroke();
+    ctx.beginPath();ctx.arc(mx(bx),my(cy),0.225*scale,0,7);ctx.stroke();
+    const keyL=5.8, keyW=4.9;
+    const kx = s===0?baseX:baseX-keyL;
+    ctx.strokeRect(mx(kx),my(cy-keyW/2),keyL*scale,keyW*scale);
+    const ftX = s===0?baseX+keyL:baseX-keyL;
+    ctx.beginPath();ctx.arc(mx(ftX),my(cy),1.8*scale,-Math.PI/2,Math.PI/2,s===1);ctx.stroke();
+    ctx.setLineDash([6,6]);
+    ctx.beginPath();ctx.arc(mx(ftX),my(cy),1.8*scale,Math.PI/2,-Math.PI/2,s===1);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.beginPath();ctx.arc(mx(bx),my(cy),1.25*scale,Math.PI/2,-Math.PI/2,s===1);ctx.stroke();
+    const r3=6.75, cornerY=0.9;
+    const dy=(cy-cornerY);
+    const xAtArc = bx + dir*Math.sqrt(Math.max(0,r3*r3 - dy*dy));
+    ctx.beginPath();ctx.moveTo(mx(baseX),my(cornerY));ctx.lineTo(mx(xAtArc),my(cornerY));ctx.stroke();
+    ctx.beginPath();ctx.moveTo(mx(baseX),my(l-cornerY));ctx.lineTo(mx(xAtArc),my(l-cornerY));ctx.stroke();
+    const ang=Math.atan2(dy, Math.abs(xAtArc-bx));
+    if(s===0){ ctx.beginPath();ctx.arc(mx(bx),my(cy),r3*scale,-ang,ang);ctx.stroke(); }
+    else{ ctx.beginPath();ctx.arc(mx(bx),my(cy),r3*scale,Math.PI-ang,Math.PI+ang);ctx.stroke(); }
+  }
+}
+
+/* ================= 選手・ボール描画 ================= */
+function drawDisc(m,color,label){
+  const x=mx(m[0]), y=my(m[1]), r=R_PLAYER*scale;
+  ctx.beginPath();ctx.arc(x,y,r,0,7);
+  ctx.fillStyle=color;ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.95)';ctx.lineWidth=2;ctx.stroke();
+  ctx.fillStyle='#fff';ctx.font=`bold ${Math.round(r*0.95)}px sans-serif`;
+  ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(label,x,y);
+}
+function drawBall(){
+  const x=mx(ball.m[0]), y=my(ball.m[1]), r=0.28*scale;
+  ctx.beginPath();ctx.arc(x,y,r,0,7);
+  ctx.fillStyle='#ef6c00';ctx.fill();ctx.strokeStyle='#bf360c';ctx.lineWidth=2;ctx.stroke();
+}
+
+function drawPaths(){
+  const all=[...offense,...defense];
+  all.forEach((p,i)=>{
+    if(p.hidden)return;
+    const pa=paths[i]; if(!pa||pa.length<2)return;
+    ctx.beginPath();ctx.moveTo(mx(pa[0][0]),my(pa[0][1]));
+    for(let j=1;j<pa.length;j++)ctx.lineTo(mx(pa[j][0]),my(pa[j][1]));
+    ctx.strokeStyle = i<offense.length?'rgba(25,118,210,.55)':'rgba(211,47,47,.55)';
+    ctx.lineWidth=2.5;ctx.setLineDash([7,5]);ctx.stroke();ctx.setLineDash([]);
+    arrowHead(pa, i<offense.length?'#1976d2':'#d32f2f');
+  });
+  if(ballPath.length>=2){
+    ctx.beginPath();ctx.moveTo(mx(ballPath[0][0]),my(ballPath[0][1]));
+    for(let j=1;j<ballPath.length;j++)ctx.lineTo(mx(ballPath[j][0]),my(ballPath[j][1]));
+    ctx.strokeStyle='rgba(239,108,0,.6)';ctx.lineWidth=2.5;ctx.setLineDash([3,4]);ctx.stroke();ctx.setLineDash([]);
+  }
+}
+function arrowHead(pa,color){
+  const a=pa[pa.length-1], b=pa[pa.length-2];
+  const ang=Math.atan2(a[1]-b[1],a[0]-b[0]);
+  const x=mx(a[0]),y=my(a[1]),s=10;
+  ctx.beginPath();ctx.moveTo(x,y);
+  ctx.lineTo(x-s*Math.cos(ang-.4),y-s*Math.sin(ang-.4));
+  ctx.moveTo(x,y);ctx.lineTo(x-s*Math.cos(ang+.4),y-s*Math.sin(ang+.4));
+  ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.stroke();
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  if(courtMode==='half')drawHalf();else drawFull();
+  drawPaths();
+  defense.forEach(p=>{ if(!p.hidden) drawDisc(p.m,'#d32f2f',p.label); });
+  offense.forEach(p=>{ if(!p.hidden) drawDisc(p.m,'#1976d2',p.label); });
+  drawBall();
+}
+
+/* ================= 初期配置 ================= */
+function defaultPositions(){
+  if(courtMode==='half'){
+    offense=[
+      {label:'1',m:[7.5,8.6]},{label:'2',m:[2.0,6.8]},{label:'3',m:[13.0,6.8]},{label:'4',m:[1.6,2.2]},{label:'5',m:[13.4,2.2]},
+    ];
+    defense=[
+      {label:'1',m:[7.5,6.6]},{label:'2',m:[3.4,5.4]},{label:'3',m:[11.6,5.4]},{label:'4',m:[4.2,2.6]},{label:'5',m:[9.8,2.6]},
+    ];
+    ball.m=[7.5,8.4];
+  }else{
+    offense=[
+      {label:'1',m:[10,7.5]},{label:'2',m:[6,3]},{label:'3',m:[6,12]},{label:'4',m:[3.5,5]},{label:'5',m:[3.5,10]},
+    ];
+    defense=[
+      {label:'1',m:[12,7.5]},{label:'2',m:[8,4]},{label:'3',m:[8,11]},{label:'4',m:[5,6]},{label:'5',m:[5,9]},
+    ];
+    ball.m=[10,7.3];
+  }
+  players=[...offense,...defense];
+}
+
+const DEF = [[7.5,8.6],[2.0,6.8],[13.0,6.8],[1.6,2.2],[13.4,2.2]];
+const DD  = [[7.5,6.6],[3.4,5.4],[11.6,5.4],[4.2,2.6],[9.8,2.6]];
+
+const PLAYS = {
+  'P&R（ロール）':{ cat:'ピック&ロール', desc:'5番がトップでボールスクリーン→ゴールへロール', use:[0,4],
+    frames:[
+      { o:[[7.5,8.6],DEF[1],DEF[2],DEF[3],[9.8,3.4]], ball:[7.5,8.4] },
+      { o:[[7.5,8.4],DEF[1],DEF[2],DEF[3],[8.8,7.2]], ball:[7.5,8.4] }, 
+      { o:[[9.4,6.6],DEF[1],DEF[2],DEF[3],[8.8,7.2]], ball:[9.4,6.6] }, 
+      { o:[[9.8,5.6],DEF[1],DEF[2],DEF[3],[8.2,3.4]], ball:[9.8,5.6] }, 
+      { o:[[9.8,5.6],DEF[1],DEF[2],DEF[3],[7.8,2.4]], ball:[7.9,2.6] }, 
+    ]
+  },
+  'P&R（ポップ）':{ cat:'ピック&ロール', desc:'スクリーン後、5番が外へポップして3Pジャンパー', use:[0,4],
+    frames:[
+      { o:[[7.5,8.6],DEF[1],DEF[2],DEF[3],[9.8,3.4]], ball:[7.5,8.4] },
+      { o:[[7.5,8.4],DEF[1],DEF[2],DEF[3],[8.8,7.2]], ball:[7.5,8.4] }, 
+      { o:[[9.6,6.6],DEF[1],DEF[2],DEF[3],[8.8,7.2]], ball:[9.6,6.6] }, 
+      { o:[[9.8,6.2],DEF[1],DEF[2],DEF[3],[6.0,8.8]], ball:[9.8,6.2] }, 
+      { o:[[9.8,6.2],DEF[1],DEF[2],DEF[3],[5.8,9.0]], ball:[6.0,8.8] }, 
+    ]
+  },
+  'サイドP&R':{ cat:'ピック&ロール', desc:'右ウイングでスクリーン→ミドルへドライブ→ロール', use:[0,4],
+    frames:[
+      { o:[[12.8,6.8],DEF[1],DEF[2],DEF[3],[9.8,3.4]], ball:[12.8,6.8] },
+      { o:[[12.8,6.8],DEF[1],DEF[2],DEF[3],[11.6,6.2]], ball:[12.8,6.8] }, 
+      { o:[[10.6,5.2],DEF[1],DEF[2],DEF[3],[11.6,6.2]], ball:[10.6,5.2] }, 
+      { o:[[9.8,4.2],DEF[1],DEF[2],DEF[3],[8.4,3.2]], ball:[9.8,4.2] }, 
+      { o:[[9.8,4.2],DEF[1],DEF[2],DEF[3],[7.9,2.4]], ball:[8.0,2.6] }, 
+    ]
+  },
+  'スペインP&R':{ cat:'ピック&ロール', desc:'P&Rのロールに2番が相手へバックスクリーン（スペイン）', use:[0,1,4],
+    frames:[
+      { o:[[7.5,8.6],[1.6,2.4],DEF[2],DEF[3],[6.0,3.6]], ball:[7.5,8.4] },
+      { o:[[7.5,8.4],[5.4,4.6],DEF[2],DEF[3],[8.8,7.2]], ball:[7.5,8.4] }, 
+      { o:[[9.4,6.4],[7.2,5.2],DEF[2],DEF[3],[8.0,5.4]], ball:[9.4,6.4] }, 
+      { o:[[9.0,5.6],[6.0,8.2],DEF[2],DEF[3],[7.8,2.8]], ball:[9.0,5.6] }, 
+      { o:[[9.0,5.6],[6.0,8.4],DEF[2],DEF[3],[7.6,2.4]], ball:[7.8,2.6] }, 
+    ]
+  },
+  'Lカット':{ cat:'もらい方・カット', desc:'ゴール方向へ下りてから直角に開く。2番のもらい方(L字)', use:[0,1],
+    frames:[
+      { o:[[7.5,8.6],[3.2,6.4],DEF[2],DEF[3],DEF[4]], ball:[7.5,8.4] },
+      { o:[[7.5,8.6],[3.2,2.8],DEF[2],DEF[3],DEF[4]], ball:[7.5,8.4] }, 
+      { o:[[7.5,8.6],[1.7,6.8],DEF[2],DEF[3],DEF[4]], ball:[7.5,8.4] }, 
+      { o:[[7.5,8.6],[1.7,6.8],DEF[2],DEF[3],DEF[4]], ball:[2.0,6.7] }, 
+    ]
+  },
+  'パス&ラン':{ cat:'もらい方・カット', desc:'1→2へパス、1番がゴールへカット（ギブ&ゴー）', use:[0,1],
+    frames:[
+      { o:[[7.5,8.6],[2.4,6.8],DEF[2],DEF[3],DEF[4]], ball:[7.5,8.4] },
+      { o:[[7.5,8.4],[2.4,6.8],DEF[2],DEF[3],DEF[4]], ball:[2.8,6.9] }, 
+      { o:[[5.4,5.4],[2.4,6.8],DEF[2],DEF[3],DEF[4]], ball:[2.6,6.8] }, 
+      { o:[[6.6,2.8],[2.4,6.8],DEF[2],DEF[3],DEF[4]], ball:[2.6,6.8] },
+      { o:[[7.0,2.4],[2.4,6.8],DEF[2],DEF[3],DEF[4]], ball:[6.8,2.6] }, 
+    ]
+  },
+  'バックドア':{ cat:'もらい方・カット', desc:'3番がディナイされたら裏をかいてゴール下へ', use:[0,2],
+    frames:[
+      { o:[[7.5,8.6],DEF[1],[12.4,6.4],DEF[3],DEF[4]], ball:[7.5,8.4] },
+      { o:[[7.5,8.4],DEF[1],[13.2,7.0],DEF[3],DEF[4]], ball:[7.5,8.4] }, 
+      { o:[[7.5,8.4],DEF[1],[11.4,3.6],DEF[3],DEF[4]], ball:[7.5,8.4] }, 
+      { o:[[7.5,8.4],DEF[1],[9.6,2.2],DEF[3],DEF[4]], ball:[9.4,2.4] }, 
+    ]
+  },
+  'オフボールスクリーン':{ cat:'スクリーン・ポスト', desc:'4番がダウンスクリーン→2番がウイングへ開いて受ける', use:[0,1,3],
+    frames:[
+      { o:[[7.5,8.6],[4.6,2.6],DEF[2],[4.0,5.2],DEF[4]], ball:[7.5,8.4] },
+      { o:[[7.5,8.6],[4.6,2.6],DEF[2],[4.0,3.4],DEF[4]], ball:[7.5,8.4] }, 
+      { o:[[7.5,8.6],[2.0,6.6],DEF[2],[4.1,3.2],DEF[4]], ball:[7.5,8.4] }, 
+      { o:[[7.5,8.6],[2.0,6.6],DEF[2],[4.1,3.2],DEF[4]], ball:[2.3,6.5] }, 
+    ]
+  },
+};
+
+let currentPlay=null;
+const CATS=['ピック&ロール','ハンドオフ','もらい方・カット','スクリーン・ポスト','ディフェンス'];
+
+function buildPlayButtons(){
+  const box=document.getElementById('playButtons');
+  box.innerHTML='';
+  CATS.forEach(cat=>{
+    const names=Object.keys(PLAYS).filter(n=>PLAYS[n].cat===cat);
+    if(!names.length)return;
+    const grp=document.createElement('div'); grp.className='play-group';
+    const lab=document.createElement('div'); lab.className='cat-label'; lab.textContent=cat;
+    grp.appendChild(lab);
+    const row=document.createElement('div'); row.className='plays';
+    names.forEach(name=>{
+      const b=document.createElement('button');
+      b.textContent=name; b.title=PLAYS[name].desc;
+      b.onclick=()=>loadPlay(name,b);
+      row.appendChild(b);
+    });
+    grp.appendChild(row); box.appendChild(grp);
+  });
+}
+
+function loadPlay(name,btn){
+  if(courtMode!=='half'){ setCourt('half'); }
+  document.querySelectorAll('#playButtons button,#myPlayButtons button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  currentPlay=name;
+  const play=PLAYS[name];
+  const f=play.frames;
+  const use=play.use||[0,1,2,3,4];
+  const useD=play.useD||[];
+  const hasD=f[0].d!==undefined;
+
+  offense.forEach((p,i)=>p.hidden=!use.includes(i));
+  defense.forEach((p,i)=>p.hidden=!useD.includes(i));
+
+  paths = [];
+  offense.forEach((p,i)=>paths.push(p.hidden?[]:interpKeyframes(f.map(fr=>fr.o[i]))));
+  defense.forEach((p,i)=>paths.push((p.hidden||!hasD)?[]:interpKeyframes(f.map(fr=>fr.d[i]))));
+  ballPath = interpKeyframes(f.map(fr=>fr.ball));
+
+  offense.forEach((p,i)=>p.m=[...f[0].o[i]]);
+  if(hasD) defense.forEach((p,i)=>{ if(f[0].d[i]) p.m=[...f[0].d[i]]; });
+  ball.m=[...f[0].ball];
+  document.getElementById('btnPlay').disabled=false;
+  document.getElementById('status').textContent='「'+name+'」: '+play.desc;
+  draw();
+}
+
+function interpKeyframes(keys){
+  const seg=22, out=[];
+  for(let k=0;k<keys.length-1;k++){
+    const a=keys[k], b=keys[k+1];
+    for(let t=0;t<seg;t++){
+      const r=t/seg;
+      const e=r<.5?2*r*r:1-Math.pow(-2*r+2,2)/2; 
+      out.push([a[0]+(b[0]-a[0])*e, a[1]+(b[1]-a[1])*e]);
+    }
+  }
+  out.push([...keys[keys.length-1]]);
+  return out;
+}
+
+/* ================= 再生コントロール ================= */
+function play(){
+  if(animating)return;
+  const maxLen=Math.max(...paths.map(p=>p?p.length:0), ballPath.length);
+  if(maxLen<2)return;
+  animating=true;
+  document.getElementById('btnPlay').style.display='none';
+  document.getElementById('btnStop').style.display='';
+  const all=[...offense,...defense];
+  const start=all.map(p=>[...p.m]), sb=[...ball.m];
+  all.forEach((p,i)=>{ if(paths[i]&&paths[i].length)p.m=[...paths[i][0]]; });
+  if(ballPath.length)ball.m=[...ballPath[0]];
+  let f=0;
+  function step(){
+    if(!animating){restore(all,start,sb);return;}
+    const idx=Math.min(Math.floor(f), maxLen-1);
+    all.forEach((p,i)=>{ const pa=paths[i]; if(pa&&pa.length){p.m=[...pa[Math.min(idx,pa.length-1)]];} });
+    if(ballPath.length)ball.m=[...ballPath[Math.min(idx,ballPath.length-1)]];
+    draw();
+    f+=speed;
+    if(f>=maxLen){ animating=false; endPlay(); restore(all,start,sb); return; }
+    raf=requestAnimationFrame(step);
+  }
+  step();
+}
+function restore(all,start,sb){ all.forEach((p,i)=>p.m=[...start[i]]); ball.m=[...sb]; draw(); }
+function endPlay(){ document.getElementById('btnPlay').style.display=''; document.getElementById('btnStop').style.display='none'; }
+function stop(){ animating=false; if(raf)cancelAnimationFrame(raf); endPlay(); }
+
+/* ================= 手動記録（バグ修正済み） ================= */
+let lastRecT=0;
+function toggleRecord(){
+  recording=!recording;
+  const b=document.getElementById('btnRec');
+  if(recording){
+    b.textContent='● 記録中…（ドラッグ）'; b.classList.add('rec');
+    currentPlay=null; showAll();
+    document.getElementById('saveBox').style.display='none';
+    document.querySelectorAll('#playButtons button,#myPlayButtons button').forEach(x=>x.classList.remove('active'));
+    paths=[...offense,...defense].map(()=>[]); ballPath=[];
+    [...offense,...defense].forEach((p,i)=>paths[i].push([...p.m]));
+    ballPath.push([...ball.m]);
+    document.getElementById('status').textContent='選手・ボールをドラッグすると動きが記録されます';
+  }else{
+    b.textContent='● 自分で記録'; b.classList.remove('rec');
+    document.getElementById('btnPlay').disabled=false;
+    
+    // 【修正箇所】正しく動きを判定できるようにスプレッド演算子の不具合をクリア
+    const moved = paths.some(p => p.length > 1) || ballPath.length > 1;
+    document.getElementById('saveBox').style.display = moved ? '' : 'none';
+    lastRecording = moved ? {court:courtMode, paths:paths.map(p=>p.map(pt=>[...pt])), ballPath:ballPath.map(pt=>[...pt])} : null;
+    document.getElementById('status').textContent = moved
+      ? '記録完了。▶再生、または名前を付けて💾保存できます'
+      : '動きが記録されませんでした。記録中にドラッグしてください';
+  }
+}
+
+/* ================= ドラッグ操作 ================= */
+function getPos(e){
+  const r=canvas.getBoundingClientRect();
+  const t=e.touches?e.touches[0]:e;
+  const px=(t.clientX-r.left)*(W/r.width), py=(t.clientY-r.top)*(H/r.height);
+  return px2m(px,py);
+}
+function hit(m){
+  const bd=Math.hypot(m[0]-ball.m[0],m[1]-ball.m[1]);
+  if(bd<0.5)return{type:'ball'};
+  const all=[...offense,...defense];
+  for(let i=0;i<all.length;i++){
+    if(Math.hypot(m[0]-all[i].m[0],m[1]-all[i].m[1])<R_PLAYER+0.15)return{type:'p',i};
+  }
+  return null;
+}
+canvas.addEventListener('pointerdown',e=>{
+  const m=getPos(e); const h=hit(m); if(!h)return;
+  drag=h;
+  const target = h.type==='ball'?ball.m:[...offense,...defense][h.i].m;
+  dragOff={x:target[0]-m[0],y:target[1]-m[1]};
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove',e=>{
+  if(!drag)return;
+  const m=getPos(e); const nx=m[0]+dragOff.x, ny=m[1]+dragOff.y;
+  if(drag.type==='ball'){ ball.m=[nx,ny]; if(recording)ballPath.push([nx,ny]); }
+  else{
+    const all=[...offense,...defense]; all[drag.i].m=[nx,ny];
+    if(recording&&Date.now()-lastRecT>45){ paths[drag.i].push([nx,ny]); lastRecT=Date.now(); }
+  }
+  draw();
+});
+canvas.addEventListener('pointerup',()=>drag=null);
+canvas.addEventListener('pointercancel',()=>drag=null);
+
+/* ================= ボード制御 ================= */
+function setCourt(mode){
+  if(animating)stop();
+  courtMode=mode;
+  document.getElementById('btnHalf').classList.toggle('active',mode==='half');
+  document.getElementById('btnFull').classList.toggle('active',mode==='full');
+  document.querySelectorAll('#playButtons button').forEach(b=>b.classList.remove('active'));
+  currentPlay=null;
+  layout(); resetPositions();
+}
+function showAll(){ [...offense,...defense].forEach(p=>p.hidden=false); }
+function clearPaths(){
+  paths=[...offense,...defense].map(()=>[]); ballPath=[];
+  currentPlay=null; showAll();
+  document.querySelectorAll('#playButtons button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('btnPlay').disabled=true; draw();
+}
+function resetPositions(){ defaultPositions(); clearPaths(); }
+
+/* ================= マイプレー（保存処理） ================= */
+let lastRecording=null;          
+let myPlays=[];                  
+let storageOK=true;
+const MYKEY='baske_myplays_v1';
+
+function loadMyPlays(){
+  try{ const s=localStorage.getItem(MYKEY); myPlays = s?JSON.parse(s):[]; }
+  catch(e){ myPlays=[]; storageOK=false; }
+}
+function persistMyPlays(){
+  try{ localStorage.setItem(MYKEY, JSON.stringify(myPlays)); }
+  catch(e){
+    if(storageOK){ storageOK=false;
+      alert('この環境では自動保存ができないようです。\n「⬇ バックアップを書き出す」でファイルとして保存してください。'); }
+  }
+}
+
+function renderMyPlays(){
+  const box=document.getElementById('myPlayButtons');
+  box.innerHTML='';
+  if(!myPlays.length){
+    box.innerHTML='<span class="label">まだありません。「● 自分で記録」→ ドラッグ → 保存で追加できます。</span>';
+    return;
+  }
+  myPlays.forEach((sp,idx)=>{
+    const wrap=document.createElement('span'); wrap.className='myplay';
+    const b=document.createElement('button');
+    b.textContent=sp.name+'（'+(sp.court==='half'?'ハーフ':'フル')+'）';
+    b.onclick=()=>loadMyPlay(idx,b);
+    const d=document.createElement('button'); d.className='del'; d.textContent='✕';
+    d.title='削除'; d.onclick=(ev)=>{ ev.stopPropagation(); deleteMyPlay(idx); };
+    wrap.appendChild(b); wrap.appendChild(d); box.appendChild(wrap);
+  });
+}
+
+function saveCurrentPlay(){
+  if(!lastRecording){ alert('先に「● 自分で記録」で動きを記録してください。'); return; }
+  const inp=document.getElementById('playName');
+  let name=(inp.value||'').trim();
+  if(!name){ alert('プレー名を入力してください。'); inp.focus(); return; }
+  myPlays.push({ name, court:lastRecording.court,
+    paths:lastRecording.paths, ballPath:lastRecording.ballPath });
+  persistMyPlays(); renderMyPlays();
+  inp.value=''; document.getElementById('saveBox').style.display='none';
+  lastRecording=null;
+  document.getElementById('status').textContent='「'+name+'」をマイプレーに保存しました。';
+}
+
+function loadMyPlay(idx,btn){
+  const sp=myPlays[idx]; if(!sp)return;
+  if(animating)stop();
+  if(courtMode!==sp.court) setCourt(sp.court);
+  document.querySelectorAll('#playButtons button,#myPlayButtons button').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  currentPlay=null; showAll();
+  paths = sp.paths.map(p=>p.map(pt=>[...pt]));
+  ballPath = sp.ballPath.map(pt=>[...pt]);
+  const all=[...offense,...defense];
+  all.forEach((p,i)=>{ if(paths[i]&&paths[i].length) p.m=[...paths[i][0]]; });
+  if(ballPath.length) ball.m=[...ballPath[0]];
+  document.getElementById('btnPlay').disabled=false;
+  document.getElementById('status').textContent='マイプレー「'+sp.name+'」を読み込みました。▶再生できます';
+  draw();
+}
+
+function deleteMyPlay(idx){
+  const sp=myPlays[idx]; if(!sp)return;
+  if(!confirm('「'+sp.name+'」を削除しますか？')) return;
+  myPlays.splice(idx,1); persistMyPlays(); renderMyPlays();
+}
+
+function exportPlays(){
+  if(!myPlays.length){ alert('保存されたマイプレーがありません。'); return; }
+  const blob=new Blob([JSON.stringify(myPlays,null,1)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='作戦盤_myplays.json';
+  a.click(); URL.revokeObjectURL(a.href);
+}
+
+function importPlays(ev){
+  const file=ev.target.files[0]; if(!file)return;
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const data=JSON.parse(r.result);
+      if(!Array.isArray(data)) throw 0;
+      const valid=data.filter(p=>p&&p.name&&Array.isArray(p.paths)&&Array.isArray(p.ballPath));
+      myPlays=myPlays.concat(valid);
+      persistMyPlays(); renderMyPlays();
+      alert(valid.length+'件のプレーを読み込みました。');
+    }catch(e){ alert('読み込めませんでした。ファイル形式を確認してください。'); }
+    ev.target.value='';
+  };
+  r.readAsText(file);
+}
+
+/* ================= 起動 ================= */
+loadMyPlays();
+renderMyPlays();
+buildPlayButtons();
+layout();
+resetPositions();
+draw();
+</script>
+</body>
+</html>
