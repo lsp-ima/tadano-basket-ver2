@@ -117,13 +117,21 @@
 
 <canvas id="court"></canvas>
 
+<div class="legend">
+  <span><span class="dot" style="background:var(--blue)"></span> オフェンス 1–5</span>
+  <span><span class="dot" style="background:var(--red)"></span> ディフェンス 1–5</span>
+  <span><span class="dot" style="background:var(--ball)"></span> ボール</span>
+  <span>—— 移動 ‑‑‑ パス</span>
+</div>
+
 <fieldset>
   <legend>戦術プリセット（自動再生）</legend>
   <div id="playButtons"></div>
 </fieldset>
 
 <div class="row">
-  <button id="btnRec" onclick="toggleKf()">📍 コマで記録</button>
+  <button id="btnRec" onclick="toggleRoute()">✏️ ルートを描く</button>
+  <button id="rtSeqBtn" onclick="toggleSeq()">切替：順番に再生</button>
   <button id="btnPlay" onclick="play()" disabled>▶ 再生</button>
   <button id="btnStop" onclick="stop()" style="display:none">■ 停止</button>
   <button onclick="clearPaths()">経路クリア</button>
@@ -139,17 +147,24 @@
     <option value="2">2x</option>
   </select>
 </div>
-<div class="label" id="status">選手・ボールをドラッグして配置できます</div>
+<div class="label" id="status">左のベンチから選手をコートへドラッグして配置します</div>
 
-<div id="kfPanel" style="display:none">
-  <div class="row" style="justify-content:flex-start">
-    <span class="kf-count" id="kfCount">1コマ目</span>
-    <button class="kf-add" onclick="kfAdd()">📍 今の配置をコマに追加</button>
-    <button onclick="kfUndo()">↩ 1つ戻す</button>
-    <button class="kf-done" onclick="kfDone()">✓ 記録完了</button>
-    <button onclick="kfCancel()">やめる</button>
+<div id="rtPanel" style="display:none">
+  <div class="row" style="justify-content:flex-start;margin-bottom:8px">
+    <span class="kf-count">描くもの</span>
+    <div class="seg" id="drawSeg">
+      <button class="active" data-dm="move" onclick="setDrawMode('move',this)">移動</button>
+      <button data-dm="dribble" onclick="setDrawMode('dribble',this)">ドリブル</button>
+      <button data-dm="pass" onclick="setDrawMode('pass',this)">パス</button>
+    </div>
   </div>
-  <div class="kf-hint">選手やボールを動かして「コマに追加」。これを繰り返すと、コマの間が自動でなめらかに動きます。2コマ以上で再生できます。</div>
+  <div class="row" style="justify-content:flex-start">
+    <span class="kf-count" id="rtCount">0動作</span>
+    <button onclick="routeUndo()">↩ 1つ戻す</button>
+    <button class="kf-done" onclick="routeDone()">✓ 完成</button>
+    <button onclick="routeCancel()">やめる</button>
+  </div>
+  <div class="kf-hint">上で「移動／ドリブル／パス」を選んでから描きます。移動＝選手だけ動く。ドリブル＝選手とボールが一緒に動く。パス＝ボールから受け手へ線を引く。順番／同時は上の「切替」ボタンで変更できます。</div>
 </div>
 
 <fieldset id="saveBox" style="display:none">
@@ -188,13 +203,6 @@
   </div>
 </fieldset>
 
-<div class="legend">
-  <span><span class="dot" style="background:var(--blue)"></span> オフェンス 1–5</span>
-  <span><span class="dot" style="background:var(--red)"></span> ディフェンス 1–5</span>
-  <span><span class="dot" style="background:var(--ball)"></span> ボール</span>
-  <span>—— 移動 ‑‑‑ パス</span>
-</div>
-
 <div class="vl-overlay" id="vlOverlay"><div class="vl-modal" id="vlModal"></div></div>
 
 <script>
@@ -206,6 +214,8 @@ const HALF = {wm:15, lm:14};   // ハーフ
 const FULL = {wm:28, lm:15};   // フル
 
 let courtMode='half', scale=1, padPx=22, W=680, H=560;
+const BENCH_W=78;       // 左ベンチ帯の幅(px)
+let originX=BENCH_W;    // コート左端のpx
 let speed=1, recording=false, animating=false, raf=null;
 let drag=null, dragOff={x:0,y:0};
 const R_PLAYER = 0.46; // m
@@ -214,15 +224,16 @@ let offense=[], defense=[], ball={m:[7.5,2.2]};
 let players=[]; 
 let paths=[], ballPath=[];
 
-function mx(m){ return padPx + m*scale; }
+function mx(m){ return originX + m*scale; }
 function my(m){ return padPx + m*scale; }
-function px2m(px,py){ return [ (px-padPx)/scale, (py-padPx)/scale ]; }
+function px2m(px,py){ return [ (px-originX)/scale, (py-padPx)/scale ]; }
 
 function layout(){
   const conf = courtMode==='half'?HALF:FULL;
-  const maxW = 680;
-  scale = (maxW - padPx*2) / conf.wm;
-  W = maxW;
+  const courtPx = 612;
+  scale = courtPx / conf.wm;
+  originX = BENCH_W;
+  W = BENCH_W + conf.wm*scale + 14;
   H = conf.lm*scale + padPx*2;
   canvas.width=W; canvas.height=H;
 }
@@ -232,8 +243,10 @@ function line(w){ ctx.strokeStyle='rgba(255,255,255,0.92)'; ctx.lineWidth=w||2; 
 
 function drawHalf(){
   const w=HALF.wm, l=HALF.lm;
-  ctx.fillStyle='#c8965a'; ctx.fillRect(0,0,W,H);
-  ctx.strokeStyle='#3aa6b9'; ctx.lineWidth=5; ctx.strokeRect(2.5,2.5,W-5,H-5);
+  const cp=10, cl=mx(0)-cp, ct=my(0)-cp, cw=w*scale+cp*2, ch=l*scale+cp*2;
+  ctx.fillStyle='#1d232b'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#c8965a'; ctx.fillRect(cl,ct,cw,ch);
+  ctx.strokeStyle='#3aa6b9'; ctx.lineWidth=5; ctx.strokeRect(cl+2.5,ct+2.5,cw-5,ch-5);
   line(2.5);
   ctx.strokeRect(mx(0),my(0),w*scale,l*scale);
 
@@ -265,8 +278,10 @@ function drawHalf(){
 
 function drawFull(){
   const w=FULL.wm, l=FULL.lm; 
-  ctx.fillStyle='#c8965a'; ctx.fillRect(0,0,W,H);
-  ctx.strokeStyle='#3aa6b9'; ctx.lineWidth=5; ctx.strokeRect(2.5,2.5,W-5,H-5);
+  const cp=10, cl=mx(0)-cp, ct=my(0)-cp, cw=w*scale+cp*2, ch=l*scale+cp*2;
+  ctx.fillStyle='#1d232b'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#c8965a'; ctx.fillRect(cl,ct,cw,ch);
+  ctx.strokeStyle='#3aa6b9'; ctx.lineWidth=5; ctx.strokeRect(cl+2.5,ct+2.5,cw-5,ch-5);
   line(2.5);
   ctx.strokeRect(mx(0),my(0),w*scale,l*scale);
   const cy=l/2;
@@ -319,6 +334,8 @@ function drawPaths(){
   all.forEach((p,i)=>{
     if(p.hidden)return;
     const pa=paths[i]; if(!pa||pa.length<2)return;
+    const a=pa[0], b=pa[pa.length-1];
+    if(Math.hypot(b[0]-a[0],b[1]-a[1])<0.3)return;   // ほぼ動かない経路は描かない
     ctx.beginPath();ctx.moveTo(mx(pa[0][0]),my(pa[0][1]));
     for(let j=1;j<pa.length;j++)ctx.lineTo(mx(pa[j][0]),my(pa[j][1]));
     ctx.strokeStyle = i<offense.length?'rgba(25,118,210,.55)':'rgba(211,47,47,.55)';
@@ -345,6 +362,7 @@ function draw(){
   ctx.clearRect(0,0,W,H);
   if(courtMode==='half')drawHalf();else drawFull();
   drawPaths();
+  if(routeMode && typeof drawRoutes==='function') drawRoutes();
   defense.forEach(p=>{ if(!p.hidden) drawDisc(p.m,'#d32f2f',p.label); });
   offense.forEach(p=>{ if(!p.hidden) drawDisc(p.m,'#1976d2',p.label); });
   drawBall();
@@ -352,23 +370,16 @@ function draw(){
 
 /* ================= 初期配置 ================= */
 function defaultPositions(){
-  if(courtMode==='half'){
-    offense=[
-      {label:'1',m:[7.5,8.6]},{label:'2',m:[2.0,6.8]},{label:'3',m:[13.0,6.8]},{label:'4',m:[1.6,2.2]},{label:'5',m:[13.4,2.2]},
-    ];
-    defense=[
-      {label:'1',m:[7.5,6.6]},{label:'2',m:[3.4,5.4]},{label:'3',m:[11.6,5.4]},{label:'4',m:[4.2,2.6]},{label:'5',m:[9.8,2.6]},
-    ];
-    ball.m=[7.5,8.4];
-  }else{
-    offense=[
-      {label:'1',m:[10,7.5]},{label:'2',m:[6,3]},{label:'3',m:[6,12]},{label:'4',m:[3.5,5]},{label:'5',m:[3.5,10]},
-    ];
-    defense=[
-      {label:'1',m:[12,7.5]},{label:'2',m:[8,4]},{label:'3',m:[8,11]},{label:'4',m:[5,6]},{label:'5',m:[5,9]},
-    ];
-    ball.m=[10,7.3];
+  const conf = courtMode==='half'?HALF:FULL;
+  const bxm = -(BENCH_W/2)/scale;            // ベンチ中央のx(メートル)
+  offense=[]; defense=[];
+  for(let i=0;i<5;i++){
+    offense.push({label:''+(i+1), m:[bxm, ((i+0.5)/10)*conf.lm]});   // 青 1–5（上段）
   }
+  for(let i=0;i<5;i++){
+    defense.push({label:''+(i+1), m:[bxm, ((i+5.5)/10)*conf.lm]});   // 赤 1–5（下段）
+  }
+  ball.m = [conf.wm/2, conf.lm*0.6];          // ボールはコート上
   players=[...offense,...defense];
 }
 
@@ -471,6 +482,8 @@ function buildPlayButtons(){
 }
 
 function loadPlay(name,btn){
+  if(routeMode)routeExitUI();
+  routeActions=[]; routeStart=null;
   if(courtMode!=='half'){ setCourt('half'); }
   document.querySelectorAll('#playButtons button,#myPlayButtons button').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
@@ -540,84 +553,206 @@ function restore(all,start,sb){ all.forEach((p,i)=>p.m=[...start[i]]); ball.m=[.
 function endPlay(){ document.getElementById('btnPlay').style.display=''; document.getElementById('btnStop').style.display='none'; }
 function stop(){ animating=false; if(raf)cancelAnimationFrame(raf); endPlay(); }
 
-/* ================= コマ撮り記録（キーフレーム） ================= */
+/* ================= ルート描き（矢印で動きを作る） ================= */
 let lastRecT=0;
-let kfMode=false, keyframes=[];
+let routeMode=false;        // 描画モード中
+let routeStart=null;        // 開始配置 {pos:[[x,y]*10], ball:[x,y]}
+let routeActions=[];        // [{kind:'player'|'pass', idx, pts:[...], carry:bool}]
+let seqMode=true;           // true=順番 / false=同時
+let drawing=null;           // 描画中ストローク {hit,pts}
+const CARRY_DIST=0.85;      // ボール保持とみなす距離(m)
 
-function toggleKf(){
-  if(kfMode){ kfCancel(); return; }
+function snapState(){ const a=[...offense,...defense]; return {pos:a.map(p=>[...p.m]), ball:[...ball.m]}; }
+
+function toggleRoute(){
+  if(routeMode){ routeCancel(); return; }
   if(animating)stop();
-  kfMode=true; recording=false;
-  currentPlay=null; showAll();
+  routeMode=true; recording=false; currentPlay=null; showAll();
   document.querySelectorAll('#playButtons button,#myPlayButtons button').forEach(x=>x.classList.remove('active'));
   document.getElementById('saveBox').style.display='none';
+  routeStart=snapState(); routeActions=[];
   paths=[...offense,...defense].map(()=>[]); ballPath=[];
-  keyframes=[]; kfCapture();           // 開始時の配置を1コマ目に
   const b=document.getElementById('btnRec');
-  b.textContent='● コマ撮り中…'; b.classList.add('rec');
-  document.getElementById('kfPanel').style.display='';
-  document.getElementById('kfCount').textContent='1コマ目';
+  b.textContent='● 描画中…'; b.classList.add('rec');
+  document.getElementById('rtPanel').style.display='';
+  document.getElementById('rtCount').textContent='0動作';
   document.getElementById('btnPlay').disabled=true;
-  document.getElementById('status').textContent='開始の配置を作ったら「コマに追加」。次の配置に動かして、また追加します';
+  updateSeqBtn();
+  document.getElementById('status').textContent='上で「移動／ドリブル／パス」を選んでから、コート上でなぞって描きます';
   draw();
 }
-function kfCapture(){
-  const all=[...offense,...defense];
-  keyframes.push({ pos: all.map(p=>[...p.m]), ball:[...ball.m] });
+
+/* --- 描画ストロークの確定 --- */
+function simplify(pts){
+  const out=[pts[0]];
+  for(let i=1;i<pts.length;i++){ const a=out[out.length-1];
+    if(Math.hypot(pts[i][0]-a[0],pts[i][1]-a[1])>0.25)out.push(pts[i]); }
+  if(out.length<2 && pts.length>1)out.push(pts[pts.length-1]);
+  return out;
 }
-function kfRebuild(){
-  const all=[...offense,...defense];
-  if(keyframes.length>=2){
-    paths = all.map((p,i)=>interpKeyframes(keyframes.map(k=>k.pos[i])));
-    ballPath = interpKeyframes(keyframes.map(k=>k.ball));
-  }else{ paths = all.map(()=>[]); ballPath = []; }
-}
-function kfAdd(){
-  if(!kfMode)return;
-  kfCapture(); kfRebuild();
-  document.getElementById('kfCount').textContent=keyframes.length+'コマ';
-  document.getElementById('btnPlay').disabled = keyframes.length<2;
+let drawMode='move';   // move / dribble / pass
+function setDrawMode(m,btn){
+  drawMode=m;
+  document.querySelectorAll('#drawSeg button').forEach(b=>b.classList.toggle('active',b.dataset.dm===m));
   document.getElementById('status').textContent =
-    keyframes.length+'コマ記録。続けて動かして追加、または「✓ 記録完了」を押してください';
+    m==='move'   ? '「移動」：動かす選手をなぞってください（ボールは動きません）' :
+    m==='dribble'? '「ドリブル」：ボールを運ぶ選手をなぞってください（ボールも一緒に動きます）' :
+                   '「パス」：ボール（または持っている選手）から受け手へなぞってください';
+}
+function finalizeStroke(d){
+  const pts=simplify(d.pts);
+  if(pts.length<2) return;                 // タップだけは無視
+  if(drawMode==='pass'){
+    pts[0]=[...ball.m];                      // パスは必ずボールから始まる
+    routeActions.push({kind:'pass', pts});
+  }else{
+    if(d.hit.type!=='p'){                   // 移動・ドリブルは選手から
+      document.getElementById('status').textContent='移動・ドリブルは選手から描いてください（パスはボールから）';
+      return;
+    }
+    routeActions.push({kind:'player', idx:d.hit.i, pts, carry: drawMode==='dribble'});
+  }
+  applyActionToBoard(routeActions[routeActions.length-1]);
+  buildFromActions();
+  document.getElementById('rtCount').textContent=routeActions.length+'動作';
+  document.getElementById('btnPlay').disabled = routeActions.length<1;
+  document.getElementById('status').textContent=routeActions.length+'動作。続けて描く、または「✓ 完成」。順番／同時は上の切替で変更できます';
   draw();
 }
-function kfUndo(){
-  if(keyframes.length<=1)return;
-  keyframes.pop(); kfRebuild();
-  const all=[...offense,...defense], last=keyframes[keyframes.length-1];
-  all.forEach((p,i)=>p.m=[...last.pos[i]]); ball.m=[...last.ball];
-  document.getElementById('kfCount').textContent=keyframes.length+(keyframes.length===1?'コマ目':'コマ');
-  document.getElementById('btnPlay').disabled = keyframes.length<2;
+function applyActionToBoard(a){
+  const end=a.pts[a.pts.length-1];
+  if(a.kind==='pass'){ ball.m=[...end]; }
+  else{ const all=[...offense,...defense]; all[a.idx].m=[...end]; if(a.carry)ball.m=[...end]; }
+}
+
+/* --- アクション列 → paths/ballPath を生成 --- */
+function polyAt(pts,t){
+  if(pts.length===1)return [...pts[0]];
+  const seg=[]; let total=0;
+  for(let i=1;i<pts.length;i++){ const d=Math.hypot(pts[i][0]-pts[i-1][0],pts[i][1]-pts[i-1][1]); seg.push(d); total+=d; }
+  if(total===0)return [...pts[0]];
+  let target=t*total, acc=0;
+  for(let i=0;i<seg.length;i++){
+    if(acc+seg[i]>=target){ const r=seg[i]?(target-acc)/seg[i]:0;
+      return [pts[i][0]+(pts[i+1][0]-pts[i][0])*r, pts[i][1]+(pts[i+1][1]-pts[i][1])*r]; }
+    acc+=seg[i];
+  }
+  return [...pts[pts.length-1]];
+}
+function ease(r){ return r<.5?2*r*r:1-Math.pow(-2*r+2,2)/2; }
+function chainAt(segs,r){
+  const lens=segs.map(s=>{ let L=0; for(let i=1;i<s.length;i++)L+=Math.hypot(s[i][0]-s[i-1][0],s[i][1]-s[i-1][1]); return L||0.0001; });
+  const total=lens.reduce((a,b)=>a+b,0);
+  let target=r*total, acc=0;
+  for(let i=0;i<segs.length;i++){
+    if(acc+lens[i]>=target || i===segs.length-1){ const lr=lens[i]?(target-acc)/lens[i]:0; return polyAt(segs[i],Math.max(0,Math.min(1,lr))); }
+    acc+=lens[i];
+  }
+  return polyAt(segs[segs.length-1],1);
+}
+function buildFromActions(){
+  if(!routeStart){ paths=[...offense,...defense].map(()=>[]); ballPath=[]; return; }
+  const nP=routeStart.pos.length, SEG=26;
+  const pPos=routeStart.pos.map(p=>[...p]); let bPos=[...routeStart.ball];
+  const pPath=Array.from({length:nP},()=>[]); let bPath=[];
+  if(seqMode){
+    for(let i=0;i<nP;i++)pPath[i].push([...pPos[i]]); bPath.push([...bPos]);
+    routeActions.forEach(a=>{
+      for(let f=1;f<=SEG;f++){
+        const pos=polyAt(a.pts, ease(f/SEG));
+        for(let i=0;i<nP;i++){
+          if(a.kind==='player'&&i===a.idx)pPos[i]=[...pos];
+          pPath[i].push([...pPos[i]]);
+        }
+        if(a.kind==='pass'||(a.kind==='player'&&a.carry))bPos=[...pos];
+        bPath.push([...bPos]);
+      }
+    });
+  }else{
+    const pSegs={}, bSegs=[];
+    routeActions.forEach(a=>{ if(a.kind==='player'){ (pSegs[a.idx]=pSegs[a.idx]||[]).push(a.pts); if(a.carry)bSegs.push(a.pts); } else bSegs.push(a.pts); });
+    const SS=SEG+4;
+    for(let f=0;f<=SS;f++){
+      const r=ease(f/SS);
+      for(let i=0;i<nP;i++){ if(pSegs[i])pPos[i]=chainAt(pSegs[i],r); pPath[i].push([...pPos[i]]); }
+      if(bSegs.length)bPos=chainAt(bSegs,r);
+      bPath.push([...bPos]);
+    }
+  }
+  paths=pPath; ballPath=bPath;
+}
+
+function drawRoutes(){
+  routeActions.forEach((a,k)=>{
+    const pts=a.pts; if(pts.length<2)return;
+    ctx.beginPath(); ctx.moveTo(mx(pts[0][0]),my(pts[0][1]));
+    for(let i=1;i<pts.length;i++)ctx.lineTo(mx(pts[i][0]),my(pts[i][1]));
+    const isBall = a.kind==='pass'||a.carry;
+    ctx.strokeStyle = a.kind==='pass'?'rgba(239,108,0,.95)':(a.carry?'rgba(239,108,0,.9)':'rgba(25,118,210,.9)');
+    ctx.lineWidth=3; ctx.setLineDash(a.kind==='pass'?[4,4]:[]); ctx.stroke(); ctx.setLineDash([]);
+    arrowHead(pts, isBall?'#ef6c00':'#1976d2');
+    const x=mx(pts[0][0]), y=my(pts[0][1]);
+    ctx.beginPath(); ctx.arc(x,y,9,0,7); ctx.fillStyle='#fff'; ctx.fill();
+    ctx.fillStyle='#1c2127'; ctx.font='bold 11px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(seqMode?(k+1):'•', x, y);
+  });
+  if(drawing && drawing.pts.length>1){
+    const pts=drawing.pts;
+    ctx.beginPath(); ctx.moveTo(mx(pts[0][0]),my(pts[0][1]));
+    for(let i=1;i<pts.length;i++)ctx.lineTo(mx(pts[i][0]),my(pts[i][1]));
+    ctx.strokeStyle='rgba(255,255,255,.85)'; ctx.lineWidth=2.5; ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
+  }
+}
+
+function toggleSeq(){
+  seqMode=!seqMode; updateSeqBtn();
+  if(routeActions.length){ buildFromActions(); }
   draw();
 }
-function kfExitUI(){
-  kfMode=false;
-  const b=document.getElementById('btnRec');
-  b.textContent='📍 コマで記録'; b.classList.remove('rec');
-  document.getElementById('kfPanel').style.display='none';
+function updateSeqBtn(){
+  const b=document.getElementById('rtSeqBtn');
+  if(b) b.textContent = seqMode?'切替：順番に再生':'切替：同時に再生';
 }
-function kfCancel(){
-  kfExitUI(); keyframes=[];
+function routeUndo(){
+  if(!routeActions.length)return;
+  routeActions.pop();
+  // 盤面を最初から再構成
+  const all=[...offense,...defense];
+  all.forEach((p,i)=>p.m=[...routeStart.pos[i]]); ball.m=[...routeStart.ball];
+  routeActions.forEach(applyActionToBoard);
+  buildFromActions();
+  document.getElementById('rtCount').textContent=routeActions.length+'動作';
+  document.getElementById('btnPlay').disabled = routeActions.length<1;
+  draw();
+}
+function routeExitUI(){
+  routeMode=false;
+  const b=document.getElementById('btnRec'); b.textContent='✏️ ルートを描く'; b.classList.remove('rec');
+  document.getElementById('rtPanel').style.display='none';
+}
+function routeCancel(){
+  routeExitUI(); routeActions=[]; routeStart=null; drawing=null;
   paths=[...offense,...defense].map(()=>[]); ballPath=[];
   document.getElementById('btnPlay').disabled=true;
-  document.getElementById('status').textContent='選手・ボールをドラッグして配置できます';
+  document.getElementById('status').textContent='左のベンチから選手をコートへドラッグして配置します';
   draw();
 }
-function kfDone(){
-  if(keyframes.length<2){
-    document.getElementById('status').textContent='コマが1つだけです。配置を変えて「コマに追加」してください';
+function routeDone(){
+  if(routeActions.length<1){
+    document.getElementById('status').textContent='まだ動きがありません。選手をなぞって矢印を描いてください';
     return;
   }
-  kfRebuild();
+  buildFromActions();
   const all=[...offense,...defense];
-  all.forEach((p,i)=>p.m=[...keyframes[0].pos[i]]);   // 開始位置にそろえる
-  ball.m=[...keyframes[0].ball];
-  lastRecording = {court:courtMode, paths:paths.map(p=>p.map(pt=>[...pt])), ballPath:ballPath.map(pt=>[...pt])};
-  const n=keyframes.length;
-  kfExitUI();
+  all.forEach((p,i)=>p.m=[...routeStart.pos[i]]); ball.m=[...routeStart.ball];   // 開始位置にそろえる
+  lastRecording = {court:courtMode,
+    paths:paths.map(p=>p.map(pt=>[...pt])), ballPath:ballPath.map(pt=>[...pt]),
+    actions:routeActions.map(a=>({kind:a.kind,idx:a.idx,carry:a.carry,pts:a.pts.map(pt=>[...pt])})),
+    start:{pos:routeStart.pos.map(p=>[...p]),ball:[...routeStart.ball]}, seq:seqMode};
+  routeExitUI();
   document.getElementById('btnPlay').disabled=false;
   document.getElementById('saveBox').style.display='';
-  document.getElementById('status').textContent='記録完了（'+n+'コマ）。▶再生、または名前を付けて💾保存できます';
+  document.getElementById('status').textContent='完成（'+routeActions.length+'動作・'+(seqMode?'順番':'同時')+'）。▶再生、または名前を付けて💾保存。切替ボタンで順番／同時を変えられます';
   draw();
 }
 
@@ -638,13 +773,31 @@ function hit(m){
   return null;
 }
 canvas.addEventListener('pointerdown',e=>{
-  const m=getPos(e); const h=hit(m); if(!h)return;
+  const m=getPos(e);
+  if(routeMode){
+    const h=hit(m);
+    if(drawMode==='pass'){
+      drawing={hit:{type:'ball'}, pts:[m]};   // パスはどこからでも（始点はボールにそろう）
+    }else{
+      if(!h || h.type!=='p'){ document.getElementById('status').textContent='移動・ドリブルは選手をなぞってください'; return; }
+      drawing={hit:h, pts:[m]};
+    }
+    canvas.setPointerCapture(e.pointerId);
+    return;
+  }
+  const h=hit(m); if(!h)return;
   drag=h;
   const target = h.type==='ball'?ball.m:[...offense,...defense][h.i].m;
   dragOff={x:target[0]-m[0],y:target[1]-m[1]};
   canvas.setPointerCapture(e.pointerId);
 });
 canvas.addEventListener('pointermove',e=>{
+  if(routeMode){
+    if(!drawing)return;
+    drawing.pts.push(getPos(e));
+    draw();
+    return;
+  }
   if(!drag)return;
   const m=getPos(e); const nx=m[0]+dragOff.x, ny=m[1]+dragOff.y;
   if(drag.type==='ball'){ ball.m=[nx,ny]; if(recording)ballPath.push([nx,ny]); }
@@ -654,13 +807,16 @@ canvas.addEventListener('pointermove',e=>{
   }
   draw();
 });
-canvas.addEventListener('pointerup',()=>drag=null);
-canvas.addEventListener('pointercancel',()=>drag=null);
+canvas.addEventListener('pointerup',()=>{
+  if(routeMode){ if(drawing){ finalizeStroke(drawing); drawing=null; } return; }
+  drag=null;
+});
+canvas.addEventListener('pointercancel',()=>{ if(routeMode){ drawing=null; draw(); return; } drag=null; });
 
 /* ================= ボード制御 ================= */
 function setCourt(mode){
   if(animating)stop();
-  if(kfMode)kfCancel();
+  if(routeMode)routeCancel();
   courtMode=mode;
   document.getElementById('btnHalf').classList.toggle('active',mode==='half');
   document.getElementById('btnFull').classList.toggle('active',mode==='full');
@@ -670,7 +826,8 @@ function setCourt(mode){
 }
 function showAll(){ [...offense,...defense].forEach(p=>p.hidden=false); }
 function clearPaths(){
-  if(kfMode){ kfExitUI(); keyframes=[]; }
+  if(routeMode){ routeExitUI(); }
+  routeActions=[]; routeStart=null;
   paths=[...offense,...defense].map(()=>[]); ballPath=[];
   currentPlay=null; showAll();
   document.querySelectorAll('#playButtons button').forEach(b=>b.classList.remove('active'));
@@ -715,12 +872,13 @@ function renderMyPlays(){
 }
 
 function saveCurrentPlay(){
-  if(!lastRecording){ alert('先に「● 自分で記録」で動きを記録してください。'); return; }
+  if(!lastRecording){ alert('先に「✏️ ルートを描く」で動きを作ってください。'); return; }
   const inp=document.getElementById('playName');
   let name=(inp.value||'').trim();
   if(!name){ alert('プレー名を入力してください。'); inp.focus(); return; }
   myPlays.push({ name, court:lastRecording.court,
-    paths:lastRecording.paths, ballPath:lastRecording.ballPath });
+    paths:lastRecording.paths, ballPath:lastRecording.ballPath,
+    actions:lastRecording.actions||null, start:lastRecording.start||null, seq:lastRecording.seq });
   persistMyPlays(); renderMyPlays();
   inp.value=''; document.getElementById('saveBox').style.display='none';
   lastRecording=null;
@@ -730,17 +888,27 @@ function saveCurrentPlay(){
 function loadMyPlay(idx,btn){
   const sp=myPlays[idx]; if(!sp)return;
   if(animating)stop();
+  if(routeMode)routeExitUI();
   if(courtMode!==sp.court) setCourt(sp.court);
   document.querySelectorAll('#playButtons button,#myPlayButtons button').forEach(b=>b.classList.remove('active'));
   if(btn) btn.classList.add('active');
   currentPlay=null; showAll();
-  paths = sp.paths.map(p=>p.map(pt=>[...pt]));
-  ballPath = sp.ballPath.map(pt=>[...pt]);
+  // ルート情報があれば復元（順番／同時の切替が可能に）
+  if(sp.actions && sp.start){
+    routeActions=sp.actions.map(a=>({kind:a.kind,idx:a.idx,carry:a.carry,pts:a.pts.map(pt=>[...pt])}));
+    routeStart={pos:sp.start.pos.map(p=>[...p]), ball:[...sp.start.ball]};
+    seqMode = sp.seq!==false; updateSeqBtn();
+    buildFromActions();
+  }else{
+    routeActions=[]; routeStart=null;
+    paths = sp.paths.map(p=>p.map(pt=>[...pt]));
+    ballPath = sp.ballPath.map(pt=>[...pt]);
+  }
   const all=[...offense,...defense];
   all.forEach((p,i)=>{ if(paths[i]&&paths[i].length) p.m=[...paths[i][0]]; });
   if(ballPath.length) ball.m=[...ballPath[0]];
   document.getElementById('btnPlay').disabled=false;
-  document.getElementById('status').textContent='マイプレー「'+sp.name+'」を読み込みました。▶再生できます';
+  document.getElementById('status').textContent='マイプレー「'+sp.name+'」を読み込みました。▶再生'+(sp.actions?'／切替で順番・同時を変更':'')+'できます';
   draw();
 }
 
@@ -1049,6 +1217,7 @@ resetPositions();
 draw();
 loadVlib();
 renderVlib();
+updateSeqBtn();
 document.getElementById('vlOverlay').addEventListener('click',e=>{ if(e.target.id==='vlOverlay')vlCloseModal(); });
 document.addEventListener('keydown',e=>{ if(e.key==='Escape')vlCloseModal(); });
 </script>
