@@ -1088,7 +1088,7 @@ const VLIB_SEED = {
     ]
   },
   bteam: {
-    note: 'これやってみてー。ドリブルの音が近所迷惑になる場合は、ドリブルなしでスケートの動きだけでもOK。リングがない場合はそこまでのアクションをドリブルなしで。\n英語はそれほど難しくないので、自動翻訳も使ってなんとなく理解できればOK。できそうなものだけやってください。怪我しないことが大前提です。',
+    note: 'ドリブルの音が近所迷惑になる場合は、ドリブルなしでもOK。リングがない場合はそこまでのアクションをドリブルなしで。\n英語はそれほど難しくないので、自動翻訳も使ってなんとなく理解できればOK。できそうなものだけやってください。怪我しないことが大前提です。',
     videos: [
       {label:'ドリル動画', url:'https://www.youtube.com/watch?v=SoZI_XI3FDI'},
       {label:'動画②（できそうなものだけ）', url:'https://www.youtube.com/watch?v=xoMov-_xDB4'},
@@ -1634,7 +1634,7 @@ function importPlayerPlays(ev){
 
 /* ===== 掲示板 ===== */
 const BBS_API='https://script.google.com/macros/s/AKfycbydXWXMWkUwh1QgVEg583EjHMBMUKJ-bdpBX1re0gtEW0Q2zdvEEQL_Feq3HsueSyiV/exec';
-let bTab='list',bVisMode='public',bCoachPass=null,bBoardPass=null;
+let bTab='list',bVisMode='public',bCoachPass=null,bBoardPass=localStorage.getItem('baske_board_pass')||null;
 function esc(s){return(s||'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 async function bApi(params){const url=BBS_API+'?'+new URLSearchParams(params).toString();const r=await fetch(url,{method:'GET'});return await r.json();}
 function bConfigured(){return BBS_API&&BBS_API.indexOf('http')===0;}
@@ -1650,9 +1650,22 @@ function setBTab(t){
 function setBVis(v,btn){
   bVisMode=v;
   document.querySelectorAll('#bVisSeg button').forEach(b=>b.classList.toggle('active',b.dataset.vis===v));
-  document.getElementById('bVisHint').textContent=v==='public'?'「みんなに見せる」＝掲示板に質問と回答が表示されます。':'「コーチにだけ」＝掲示板には出ません。受付番号で回答を確認できます。';
+  if(v==='private'){
+    document.getElementById('bQAnon').checked = false;
+    document.getElementById('bNameField').style.display = '';
+    document.getElementById('bVisHint').textContent='「コーチにだけ」＝掲示板には出ません。受付番号で回答を確認できます。(※匿名では送れません)';
+  }else{
+    document.getElementById('bVisHint').textContent='「みんなに見せる」＝掲示板に質問と回答が表示されます。';
+  }
 }
-document.getElementById('bQAnon').addEventListener('change',function(){document.getElementById('bNameField').style.display=this.checked?'none':'';});
+document.getElementById('bQAnon').addEventListener('change',function(){
+  if(this.checked && bVisMode==='private'){
+    toast('コーチにだけの質問は匿名にできません');
+    this.checked = false;
+    return;
+  }
+  document.getElementById('bNameField').style.display=this.checked?'none':'';
+});
 async function bLoadList(){
   if(!bConfigured()){document.getElementById('bSetupNotice').style.display='';document.getElementById('bListArea').innerHTML='';return;}
   const area=document.getElementById('bListArea');area.innerHTML='<div class="b-empty">読み込み中…</div>';
@@ -1678,6 +1691,12 @@ async function bSubmit(){
   const text=document.getElementById('bQText').value.trim();if(!text){toast('質問を入力してください');return;}
   const anon=document.getElementById('bQAnon').checked;
   const name=document.getElementById('bQName').value.trim();
+  
+  if(bVisMode==='private'){
+    if(anon){toast('コーチにだけ送る場合は、匿名にできません');return;}
+    if(!name){toast('名前を入力してください');return;}
+  }
+  
   let res;try{res=await bApi({action:'post',text,vis:bVisMode,anon:anon?'1':'0',name:anon?'':name});}catch(e){toast('送信できませんでした');return;}
   if(!res.ok){toast('送信できませんでした');return;}
   document.getElementById('bQText').value='';document.getElementById('bQName').value='';
@@ -1703,10 +1722,10 @@ function openCoach(){
 async function bCoachLogin(){
   const pass=document.getElementById('bCpass').value;if(!pass)return;
   let res;try{res=await bApi({action:'auth',coach:pass});}catch(e){toast('確認できませんでした');return;}
-  if(res.ok){bCoachPass=pass;closeModal();bUpdateCoachUI();toast('コーチモードON');bLoadList();}
+  if(res.ok){bCoachPass=pass; closeModal();bUpdateCoachUI();toast('コーチモードON');bLoadList();}
   else toast('パスワードが違います');
 }
-function bCoachOff(){bCoachPass=null;closeModal();bUpdateCoachUI();bLoadList();}
+function bCoachOff(){bCoachPass=null; closeModal();bUpdateCoachUI();bLoadList();}
 function bUpdateCoachUI(){
   document.getElementById('bCoachArea').innerHTML=bCoachPass
     ?'<span class="coachbadge">コーチON</span> <button class="b-ghost" onclick="openCoach()">OFF</button>'
@@ -1730,7 +1749,7 @@ function bAskBoardPass(){
   showModal('<h3>合言葉</h3><div class="vl-field"><label>このボードを開く合言葉</label><input type="text" id="bBpass"></div><div class="vl-mbtns"><button class="ok" onclick="bBoardLogin()">開く</button></div>');
   setTimeout(()=>{const el=document.getElementById('bBpass');if(el)el.focus();},50);
 }
-function bBoardLogin(){bBoardPass=document.getElementById('bBpass').value;closeModal();bLoadList();}
+function bBoardLogin(){bBoardPass=document.getElementById('bBpass').value; localStorage.setItem('baske_board_pass',bBoardPass); closeModal();bLoadList();}
 
 /* ===== 起動 ===== */
 loadMyPlays();renderMyPlays();
@@ -1742,7 +1761,6 @@ updateSeqBtn();
 document.getElementById('vlOverlay').addEventListener('click',e=>{if(e.target.id==='vlOverlay')closeModal();});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 if(!bConfigured()){ document.getElementById('bSetupNotice').style.display=''; document.getElementById('bListArea').innerHTML=''; }
-else bLoadList();
 
 </script>
 </body>
