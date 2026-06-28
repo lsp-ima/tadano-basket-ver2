@@ -1633,7 +1633,7 @@ function importPlayerPlays(ev){
 }
 
 /* ===== 掲示板 ===== */
-const BBS_API='https://script.google.com/macros/s/AKfycbydXWXMWkUwh1QgVEg583EjHMBMUKJ-bdpBX1re0gtEW0Q2zdvEEQL_Feq3HsueSyiV/exec;
+const BBS_API='https://script.google.com/macros/s/AKfycbydXWXMWkUwh1QgVEg583EjHMBMUKJ-bdpBX1re0gtEW0Q2zdvEEQL_Feq3HsueSyiV/exec';
 let bTab='list',bVisMode='public',bCoachPass=null,bBoardPass=null;
 function esc(s){return(s||'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 async function bApi(params){const url=BBS_API+'?'+new URLSearchParams(params).toString();const r=await fetch(url,{method:'GET'});return await r.json();}
