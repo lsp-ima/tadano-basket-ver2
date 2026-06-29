@@ -132,7 +132,7 @@ canvas{display:block;border-radius:10px;touch-action:none;box-shadow:0 4px 16px 
 .b-vseg button{background:#2d343d;border:none;color:var(--text);padding:9px 14px;font-size:13px;cursor:pointer}
 .b-vseg button.active{background:var(--accent);color:#fff;font-weight:600}
 
-/* 追加分：スケジュールカード用 */
+/* スケジュールカード用 */
 .s-tag{display:inline-block;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700;margin-bottom:10px}
 .s-tag.match{background:#3a2f1f;color:#ffcf8f;border:1px solid #6b4f25}
 .s-tag.tourney{background:#3a2326;color:#ffc9cd;border:1px solid #6b3f3a}
@@ -168,7 +168,7 @@ canvas{display:block;border-radius:10px;touch-action:none;box-shadow:0 4px 16px 
 <body>
 
 <script>
-// 今村さんの最新の本番用GASのウェブアプリURLを最初からセットしてあります！
+// 今村さんの本本番用GASのウェブアプリURLをセットしてあります
 const BBS_API = 'https://script.google.com/macros/s/AKfycbxhTaajehnNuKh_s9Kv-bzIr-ofZ1RTA6DwJR-gqjtnIzrxP7dTqZTruduUpQB_51yI/exec';
 </script>
 
@@ -1176,7 +1176,7 @@ const VLIB_SEED = {
       {label:'参考プレー④（キックアウト）', url:'https://www.youtube.com/watch?v=kAdlizr3bxo'},
       {label:'全ての基礎になるドリブルの基本スタンス', url:'https://www.youtube.com/watch?v=Hxi_IOpKUPY'}
     ]},
-    {name:'ヒノ', style:'エースキラー', note:'都大会出場チームには、ホノ以上のセンスを持ち強力なオフェンスを仕掛けてくる選手がたくさんいる。その選手を抑えないと勝てない。トーナメントを勝ち抜くにはディフェンスの要が必要。', videos:[
+    {name:'ヒノ', style:'エースキラー', note:'都大会出場チームには、ホノ以上のセンスを持ち強力なオフェンスを仕換けてくる選手がたくさんいる。その選手を抑えないと勝てない。トーナメントを勝ち抜くにはディフェンスの要が必要。', videos:[
       {label:'動画①', url:'https://www.youtube.com/shorts/QBdn6utTPtI'},
       {label:'動画②', url:'https://www.youtube.com/watch?v=1sGI26bpcI4'},
       {label:'動画③', url:'https://www.youtube.com/watch?v=bxLGOD0B0kw'},
@@ -1190,7 +1190,7 @@ const VLIB_SEED = {
 };
 
 function vclone(o){ return JSON.parse(JSON.stringify(o)); }
-function escHtml(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function escHtml(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); } 
 function escAttr(s){ return (s||'').replace(/"/g,'&quot;'); }
 
 function loadVlib(){
@@ -1233,13 +1233,7 @@ function sectionHTML(loc){
   const obj = loc==='all'?vlib.all:vlib.bteam;
   const vids=getVideos(loc);
   return `<div>
-    ${obj.note?`<div class="vl-note">${escHtml(obj.note)}</div>`:''}
-    ${vids.map((v,idx)=>vrowHTML(loc,idx)).join('')}
-    <div class="vl-addrow">
-      <button class="vl-addbtn" onclick="addVid('${loc}')">＋ 動画を追加</button>
-      <button class="vl-addbtn" onclick="editNote('${loc}')">✎ メモを編集</button>
-    </div>
-  </div>`;
+    ${obj.note?`<div class="vl-note">${escHtml(obj.note)}</div>`:''}${vids.map((v,idx)=>vrowHTML(loc,idx)).join('')}<div class="vl-addrow"><button class="vl-addbtn" onclick="addVid('${loc}')">＋ 動画を追加</button><button class="vl-addbtn" onclick="editNote('${loc}')">✎ メモを編集</button></div></div>`;
 }
 
 function renderVlib(){
@@ -1259,14 +1253,7 @@ function renderVlib(){
   const i=vidPlayerIdx, p=vlib.players[i];
   const body=`<div>
     <div class="vl-head"><span class="vl-name">${escHtml(p.name)}</span>${p.style?`<span class="vl-style">目標：${escHtml(p.style)}</span>`:''}</div>
-    ${p.note?`<div class="vl-note">${escHtml(p.note)}</div>`:''}
-    ${p.videos.map((v,idx)=>vrowHTML('p:'+i,idx)).join('')}
-    <div class="vl-addrow">
-      <button class="vl-addbtn" onclick="addVid('p:${i}')">＋ 動画を追加</button>
-      <button class="vl-addbtn" onclick="editPlayer(${i})">✎ 選手を編集</button>
-      <button class="vl-addbtn" onclick="delPlayer(${i})">✕ 選手を削除</button>
-    </div>
-  </div>`;
+    ${p.note?`<div class="vl-note">${escHtml(p.note)}</div>`:''}${p.videos.map((v,idx)=>vrowHTML('p:'+i,idx)).join('')}<div class="vl-addrow"><button class="vl-addbtn" onclick="addVid('p:${i}')">＋ 動画を追加</button><button class="vl-addbtn" onclick="editPlayer(${i})">✎ 選手を編集</button><button class="vl-addbtn" onclick="delPlayer(${i})">✕ 選手を削除</button></div></div>`;
   area.innerHTML=tabs+body;
 }
 
@@ -1293,9 +1280,7 @@ function vlFormModal(title, fields, onOk){
 }
 function vlConfirm(title, message, onOk){
   const m=document.getElementById('vlModal');
-  m.innerHTML=`<h3>${escHtml(title)}</h3><div class="vl-note">${escHtml(message)}</div>
-    <div class="vl-mbtns"><button class="ng" onclick="vlCloseModal()">キャンセル</button>
-    <button class="danger" id="vlOkBtn">削除</button></div>`;
+  m.innerHTML=`<h3>${escHtml(title)}</h3><div class="vl-note">${escHtml(message)}</div><div class="vl-mbtns"><button class="ng" onclick="vlCloseModal()">キャンセル</button><button class="danger" id="vlOkBtn">削除</button></div>`;
   document.getElementById('vlOkBtn').onclick=onOk;
   document.getElementById('vlOverlay').classList.add('show');
 }
@@ -1335,11 +1320,7 @@ function addPlayer(){
 }
 function editPlayer(i){
   const p=vlib.players[i];
-  vlFormModal('選手を編集',[
-    {key:'name',label:'選手名',value:p.name},
-    {key:'style',label:'目指すプレースタイル',value:p.style},
-    {key:'note',label:'メモ',value:p.note,type:'textarea'}
-  ],r=>{ if(r.name.trim())p.name=r.name.trim(); p.style=r.style.trim(); p.note=r.note; persistVlib(); vlCloseModal(); renderVlib(); });
+  vlFormModal('選手を編集',[{key:'name',label:'選手名',value:p.name},{key:'style',label:'目指すプレースタイル',value:p.style},{key:'note',label:'メモ',value:p.note,type:'textarea'}],r=>{ if(r.name.trim())p.name=r.name.trim(); p.style=r.style.trim(); p.note=r.note; persistVlib(); vlCloseModal(); renderVlib(); });
 }
 function delPlayer(i){
   vlConfirm('選手を削除','「'+vlib.players[i].name+'」を削除しますか？',()=>{
@@ -1433,11 +1414,6 @@ canvas.addEventListener('pointerup',()=>{
   if(routeMode&&boardSub==='coach'){if(drawing){finalizeStroke(drawing);drawing=null;}return;}
   if(playerRouteMode&&boardSub==='player'){if(playerDrawing){finalizeStrokePlayer(playerDrawing);playerDrawing=null;}return;}
   drag=null;
-});
-canvas.addEventListener('pointercancel',()=>{
-  if(routeMode) drawing=null;
-  if(playerRouteMode) playerDrawing=null;
-  drag=null; draw();
 });
 
 const PLAYER_PLAYS_KEY='baske_playerplays_v1';
@@ -1638,7 +1614,6 @@ let bTab='list',bVisMode='public',bCoachPass=null,bBoardPass=localStorage.getIte
 async function bApi(params){const url=BBS_API+'?'+new URLSearchParams(params).toString();const r=await fetch(url,{method:'GET'});return await r.json();}
 function bConfigured(){return BBS_API&&BBS_API.indexOf('http')===0;}
 
-// -- モード切替（スケジュール / 質問） --
 function setBMode(mode) {
   document.getElementById('bModeSched').classList.toggle('active', mode === 'schedule');
   document.getElementById('bModeBbs').classList.toggle('active', mode === 'bbs');
@@ -1653,6 +1628,17 @@ function formatSchedDate(dateStr) {
   if (isNaN(d)) return dateStr;
   const days = ['日', '月', '火', '水', '木', '金', '土'];
   return `${d.getMonth() + 1}月${d.getDate()}日(${days[d.getDay()]})`;
+}
+
+// ★修正：時間を「〇時〇分」表記に変換する関数を統合しました
+function formatSchedTime(timeStr) {
+  if (!timeStr) return '';
+  if (timeStr.includes('時')) return timeStr; 
+  const parts = timeStr.split(':');
+  if (parts.length < 2) return timeStr;
+  const h = parseInt(parts[0], 10);
+  const m = parseInt(parts[1], 10);
+  return `${h}時${m === 0 ? '00' : ('0' + m).slice(-2)}分`;
 }
 
 async function sRenderList() {
@@ -1677,7 +1663,7 @@ async function sRenderList() {
     const tagLabel = isTourney ? '🏆 大会' : '🏀 練習試合';
     const tagClass = isTourney ? 'tourney' : 'match';
     const coachAction = bCoachPass ? `<div class="b-cact" style="margin-top:12px; padding-top:12px; border-top:1px solid #2a313a"><button onclick="sOpenForm('${s.id}')">編集</button><button class="del" onclick="sDel('${s.id}')">削除</button></div>` : '';
-    html += `<div class="b-card"><div class="s-tag ${tagClass}">${tagLabel}</div><div class="s-date">${esc(formatSchedDate(s.date))}</div><div class="s-detail"><span class="sl">対戦相手：</span><span class="sv">${esc(s.opponent)}</span></div><div class="s-detail"><span class="sl">会  場：</span><span class="sv">${esc(s.venue)}</span></div><div class="s-detail"><span class="sl">集合時間：</span><span class="sv">${esc(s.meet)}</span></div><div class="s-detail"><span class="sl">終了予定：</span><span class="sv">${esc(s.end)}</span></div><div class="s-detail"><span class="sl">今村引率：</span><span class="sv">${esc(s.imamura)}</span></div>${s.route ? `<div class="s-route"><div class="s-route-title">🚃 経路・乗り換え</div>${escHtml(s.route)}</div>` : ''}${coachAction}</div>`;
+    html += `<div class="b-card"><div class="s-tag ${tagClass}">${tagLabel}</div><div class="s-date">${esc(formatSchedDate(s.date))}</div><div class="s-detail"><span class="sl">対戦相手：</span><span class="sv">${esc(s.opponent)}</span></div><div class="s-detail"><span class="sl">会  場：</span><span class="sv">${esc(s.venue)}</span></div><div class="s-detail"><span class="sl">集合時間：</span><span class="sv">${esc(formatSchedTime(s.meet))}</span></div><div class="s-detail"><span class="sl">終了予定：</span><span class="sv">${esc(formatSchedTime(s.end))}</span></div><div class="s-detail"><span class="sl">今村引率：</span><span class="sv">${esc(s.imamura)}</span></div>${s.route ? `<div class="s-route"><div class="s-route-title">🚃 経路・乗り換え</div>${escHtml(s.route)}</div>` : ''}${coachAction}</div>`;
   });
   area.innerHTML = html;
 }
@@ -1689,7 +1675,7 @@ function sOpenForm(id) {
   <div class="vl-field"><label>種類</label><select id="sf_type" style="width:100%; background:#1f242b;"><option value="match" ${d.type==='match'?'selected':''}>練習試合</option><option value="tourney" ${d.type==='tourney'?'selected':''}>大会</option></select></div>
   <div class="vl-field"><label>日付</label><input type="date" id="sf_date" value="${escAttr(d.date)}"></div>
   <div class="row" style="gap:10px"><div class="vl-field" style="flex:1"><label>対戦相手</label><input type="text" id="sf_opp" value="${escAttr(d.opponent)}"></div><div class="vl-field" style="flex:1"><label>会場</label><input type="text" id="sf_venue" value="${escAttr(d.venue)}"></div></div>
-  <div class="row" style="gap:10px"><div class="vl-field" style="flex:1"><label>集合時間</label><input type="text" id="sf_meet" value="${escAttr(d.meet)}"></div><div class="vl-field" style="flex:1"><label>終了予定</label><input type="text" id="sf_end" value="${escAttr(d.end)}"></div></div>
+  <div class="row" style="gap:10px"><div class="vl-field" style="flex:1"><label>集合時間 (例: 08:30)</label><input type="text" id="sf_meet" value="${escAttr(d.meet)}"></div><div class="vl-field" style="flex:1"><label>終了予定 (例: 16:00)</label><input type="text" id="sf_end" value="${escAttr(d.end)}"></div></div>
   <div class="vl-field"><label>引率 (今村コーチ)</label><select id="sf_imamura" style="width:100%; background:#1f242b;"><option value="あり" ${d.imamura==='あり'?'selected':''}>あり</option><option value="なし" ${d.imamura==='なし'?'selected':''}>なし</option></select></div>
   <div class="vl-field"><label>経路・乗り換えメモ（改行OK）</label><textarea id="sf_route" style="min-height:90px">${escHtml(d.route)}</textarea></div>
   <div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button><button class="ok" onclick="sSaveForm('${isEdit ? id : ''}')">保存</button></div>`;
