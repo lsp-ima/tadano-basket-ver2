@@ -132,7 +132,7 @@ canvas{display:block;border-radius:10px;touch-action:none;box-shadow:0 4px 16px 
 .b-vseg button{background:#2d343d;border:none;color:var(--text);padding:9px 14px;font-size:13px;cursor:pointer}
 .b-vseg button.active{background:var(--accent);color:#fff;font-weight:600}
 
-/* スケジュールカード用 */
+/* 追加分：スケジュールカード用 */
 .s-tag{display:inline-block;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700;margin-bottom:10px}
 .s-tag.match{background:#3a2f1f;color:#ffcf8f;border:1px solid #6b4f25}
 .s-tag.tourney{background:#3a2326;color:#ffc9cd;border:1px solid #6b3f3a}
@@ -168,7 +168,7 @@ canvas{display:block;border-radius:10px;touch-action:none;box-shadow:0 4px 16px 
 <body>
 
 <script>
-// 【重要】今村さんの最新の本番GASのウェブアプリURLをセットしてあります
+// 今村さんの最新の本番用GASのウェブアプリURLを最初からセットしてあります！
 const BBS_API = 'https://script.google.com/macros/s/AKfycbxhTaajehnNuKh_s9Kv-bzIr-ofZ1RTA6DwJR-gqjtnIzrxP7dTqZTruduUpQB_51yI/exec';
 </script>
 
@@ -459,7 +459,7 @@ function drawHalf(){
   const r3=6.75, cornerX=0.9;
   const dx = (cx-cornerX);
   const yAtArc = basketY + Math.sqrt(Math.max(0,r3*r3 - dx*dx));
-  ctx.beginPath();ctx.moveTo(cornerX,my(0));ctx.lineTo(mx(cornerX),my(yAtArc));ctx.stroke();
+  ctx.beginPath();ctx.moveTo(mx(cornerX),my(0));ctx.lineTo(mx(cornerX),my(yAtArc));ctx.stroke();
   ctx.beginPath();ctx.moveTo(mx(w-cornerX),my(0));ctx.lineTo(mx(w-cornerX),my(yAtArc));ctx.stroke();
   const a0=Math.atan2(yAtArc-basketY, -dx); 
   const a1=Math.atan2(yAtArc-basketY, dx);  
@@ -935,7 +935,6 @@ function routeExitUI(){
   document.getElementById('rtPanel').style.display='none';
 }
 function routeCancel(){
-  mouseMode=false;
   routeExitUI(); routeActions=[]; routeStart=null; drawing=null; currentStep=1;
   paths=[...offense,...defense].map(()=>[]); ballPath=[];
   document.getElementById('btnPlay').disabled=true;
@@ -1191,7 +1190,8 @@ const VLIB_SEED = {
 };
 
 function vclone(o){ return JSON.parse(JSON.stringify(o)); }
-function escHtml(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); } function escAttr(s){ return (s||'').replace(/"/g,'&quot;'); }
+function escHtml(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function escAttr(s){ return (s||'').replace(/"/g,'&quot;'); }
 
 function loadVlib(){
   try{ const s=localStorage.getItem(VLIBKEY); vlib = s?JSON.parse(s):vclone(VLIB_SEED); }
@@ -1233,7 +1233,13 @@ function sectionHTML(loc){
   const obj = loc==='all'?vlib.all:vlib.bteam;
   const vids=getVideos(loc);
   return `<div>
-    ${obj.note?`<div class="vl-note">${escHtml(obj.note)}</div>`:''}${vids.map((v,idx)=>vrowHTML(loc,idx)).join('')}<div class="vl-addrow"><button class="vl-addbtn" onclick="addVid('${loc}')">＋ 動画を追加</button><button class="vl-addbtn" onclick="editNote('${loc}')">✎ メモを編集</button></div></div>`;SectionHTML
+    ${obj.note?`<div class="vl-note">${escHtml(obj.note)}</div>`:''}
+    ${vids.map((v,idx)=>vrowHTML(loc,idx)).join('')}
+    <div class="vl-addrow">
+      <button class="vl-addbtn" onclick="addVid('${loc}')">＋ 動画を追加</button>
+      <button class="vl-addbtn" onclick="editNote('${loc}')">✎ メモを編集</button>
+    </div>
+  </div>`;
 }
 
 function renderVlib(){
@@ -1253,7 +1259,14 @@ function renderVlib(){
   const i=vidPlayerIdx, p=vlib.players[i];
   const body=`<div>
     <div class="vl-head"><span class="vl-name">${escHtml(p.name)}</span>${p.style?`<span class="vl-style">目標：${escHtml(p.style)}</span>`:''}</div>
-    ${p.note?`<div class="vl-note">${escHtml(p.note)}</div>`:''}${p.videos.map((v,idx)=>vrowHTML('p:'+i,idx)).join('')}<div class="vl-addrow"><button class="vl-addbtn" onclick="addVid('p:${i}')">＋ 動画を追加</button><button class="vl-addbtn" onclick="editPlayer(${i})">✎ 選手を編集</button><button class="vl-addbtn" onclick="delPlayer(${i})">✕ 選手を削除</button></div></div>`;
+    ${p.note?`<div class="vl-note">${escHtml(p.note)}</div>`:''}
+    ${p.videos.map((v,idx)=>vrowHTML('p:'+i,idx)).join('')}
+    <div class="vl-addrow">
+      <button class="vl-addbtn" onclick="addVid('p:${i}')">＋ 動画を追加</button>
+      <button class="vl-addbtn" onclick="editPlayer(${i})">✎ 選手を編集</button>
+      <button class="vl-addbtn" onclick="delPlayer(${i})">✕ 選手を削除</button>
+    </div>
+  </div>`;
   area.innerHTML=tabs+body;
 }
 
@@ -1267,7 +1280,7 @@ function vlFormModal(title, fields, onOk){
     if(f.type==='textarea'){
       html+=`<div class="vl-field"><label>${escHtml(f.label)}</label><textarea id="vlf_${f.key}">${escHtml(f.value||'')}</textarea></div>`;
     }else{
-      html+=`<div class="vl-field"><label>${escHtml(f.label)}</label><input id="vlf_${f.key}" type="${f.type||'text'}" value="${escAttr(f.value||'')}" placeholder="${escAttr(f.ph||'')}"></div>`;
+      html+=`<div class="vl-field"><label>${escHtml(f.label)}</label><input id="vlf_${f.key}" type="text" value="${escAttr(f.value||'')}" placeholder="${escAttr(f.ph||'')}"></div>`;
     }
   });
   html+=`<div class="vl-mbtns"><button class="ng" onclick="vlCloseModal()">キャンセル</button><button class="ok" id="vlOkBtn">保存</button></div>`;
@@ -1280,7 +1293,9 @@ function vlFormModal(title, fields, onOk){
 }
 function vlConfirm(title, message, onOk){
   const m=document.getElementById('vlModal');
-  m.innerHTML=`<h3>${escHtml(title)}</h3><div class="vl-note">${escHtml(message)}</div><div class="vl-mbtns"><button class="ng" onclick="vlCloseModal()">キャンセル</button><button class="danger" id="vlOkBtn">削除</button></div>`;
+  m.innerHTML=`<h3>${escHtml(title)}</h3><div class="vl-note">${escHtml(message)}</div>
+    <div class="vl-mbtns"><button class="ng" onclick="vlCloseModal()">キャンセル</button>
+    <button class="danger" id="vlOkBtn">削除</button></div>`;
   document.getElementById('vlOkBtn').onclick=onOk;
   document.getElementById('vlOverlay').classList.add('show');
 }
@@ -1309,7 +1324,10 @@ function editNote(loc){
     r=>{ obj.note=r.note; persistVlib(); vlCloseModal(); renderVlib(); });
 }
 function addPlayer(){
-  vlFormModal('選手を追加',[{key:'name',label:'選手名',value:''},{key:'style',label:'目指すプレースタイル（任意）',value:''}],r=>{
+  vlFormModal('選手を追加',[
+    {key:'name',label:'選手名',value:''},
+    {key:'style',label:'目指すプレースタイル（任意）',value:''}
+  ],r=>{
     if(!r.name.trim())return;
     vlib.players.push({name:r.name.trim(), style:r.style.trim(), note:'', videos:[]});
     vidPlayerIdx=vlib.players.length-1; persistVlib(); vlCloseModal(); renderVlib();
@@ -1317,7 +1335,11 @@ function addPlayer(){
 }
 function editPlayer(i){
   const p=vlib.players[i];
-  vlFormModal('選手を編集',[{key:'name',label:'選手名',value:p.name},{key:'style',label:'目指すプレースタイル',value:p.style},{key:'note',label:'メモ',value:p.note,type:'textarea'}],r=>{ if(r.name.trim())p.name=r.name.trim(); p.style=r.style.trim(); p.note=r.note; persistVlib(); vlCloseModal(); renderVlib(); });
+  vlFormModal('選手を編集',[
+    {key:'name',label:'選手名',value:p.name},
+    {key:'style',label:'目指すプレースタイル',value:p.style},
+    {key:'note',label:'メモ',value:p.note,type:'textarea'}
+  ],r=>{ if(r.name.trim())p.name=r.name.trim(); p.style=r.style.trim(); p.note=r.note; persistVlib(); vlCloseModal(); renderVlib(); });
 }
 function delPlayer(i){
   vlConfirm('選手を削除','「'+vlib.players[i].name+'」を削除しますか？',()=>{
@@ -1358,6 +1380,10 @@ function setMainTab(t){
     bLoadList(); 
   }
 }
+
+function showModal(html){document.getElementById('vlModal').innerHTML=html;document.getElementById('vlOverlay').classList.add('show');}
+function closeModal(){document.getElementById('vlOverlay').classList.remove('show');}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 
 let boardSub='coach';
 function setBoardSub(sub){
@@ -1407,6 +1433,11 @@ canvas.addEventListener('pointerup',()=>{
   if(routeMode&&boardSub==='coach'){if(drawing){finalizeStroke(drawing);drawing=null;}return;}
   if(playerRouteMode&&boardSub==='player'){if(playerDrawing){finalizeStrokePlayer(playerDrawing);playerDrawing=null;}return;}
   drag=null;
+});
+canvas.addEventListener('pointercancel',()=>{
+  if(routeMode) drawing=null;
+  if(playerRouteMode) playerDrawing=null;
+  drag=null; draw();
 });
 
 const PLAYER_PLAYS_KEY='baske_playerplays_v1';
@@ -1607,6 +1638,7 @@ let bTab='list',bVisMode='public',bCoachPass=null,bBoardPass=localStorage.getIte
 async function bApi(params){const url=BBS_API+'?'+new URLSearchParams(params).toString();const r=await fetch(url,{method:'GET'});return await r.json();}
 function bConfigured(){return BBS_API&&BBS_API.indexOf('http')===0;}
 
+// -- モード切替（スケジュール / 質問） --
 function setBMode(mode) {
   document.getElementById('bModeSched').classList.toggle('active', mode === 'schedule');
   document.getElementById('bModeBbs').classList.toggle('active', mode === 'bbs');
@@ -1665,7 +1697,6 @@ function sOpenForm(id) {
 }
 
 async function sSaveForm(id) {
-  // ★修正：Utilities.getUuid()の誤字を除去し、ブラウザ側で動くユニークID生成に直しました
   const uniqueId = id ? id : 'S_' + Math.random().toString(36).slice(2,9);
   const reqData = {
     action: 's_save',
