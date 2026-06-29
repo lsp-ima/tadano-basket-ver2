@@ -169,7 +169,8 @@ canvas{display:block;border-radius:10px;touch-action:none;box-shadow:0 4px 16px 
 <nav class="main-tabs">
   <button class="active" onclick="setMainTab('board')">🏀 作戦盤</button>
   <button onclick="setMainTab('video')">🎬 動画</button>
-  <button onclick="setMainTab('bbs')">🔒 チーム</button> </nav>
+  <button onclick="setMainTab('bbs')">🔒 チーム</button>
+</nav>
 
 <div class="main-pane active" id="pane-board">
 
@@ -318,65 +319,76 @@ canvas{display:block;border-radius:10px;touch-action:none;box-shadow:0 4px 16px 
 
 <div class="main-pane" id="pane-bbs">
   <div class="board-topbar">
-    <h2>チーム連絡・予定</h2> <div id="bCoachArea"><button class="b-ghost" onclick="openCoach()">コーチ</button></div>
+    <h2>チーム連絡・予定</h2>
+    <div id="bCoachArea"><button class="b-ghost" onclick="openCoach()">コーチ</button></div>
   </div>
 
-  <div class="sub-seg" style="margin-top:0; margin-bottom:14px;">
-    <button class="active" id="bModeSched" onclick="setBMode('schedule')">📅 スケジュール</button>
-    <button id="bModeBbs" onclick="setBMode('bbs')">💬 質問ボード</button>
+  <div id="bLockScreen" style="display:none; width:100%; text-align:center; padding:40px 0;">
+    <div style="font-size:44px; margin-bottom:12px;">🔒</div>
+    <div style="margin-bottom:18px; color:var(--muted); font-size:13px; line-height:1.6;">
+      ここから先はチーム専用です。<br>合言葉を入力してください。
+    </div>
+    <button class="b-primary" style="max-width:200px;" onclick="bAskBoardPass()">合言葉を入力する</button>
   </div>
 
-  <div id="bModePaneSched">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <span class="label">今後の予定（※モックアップです）</span>
-      <button class="b-ghost" id="sAddBtn" style="display:none; color:var(--accent); border-color:var(--accent);" onclick="sOpenForm()">＋ 予定追加</button>
+  <div id="bUnlockedContent" style="display:none; width:100%;">
+    <div class="sub-seg" style="margin-top:0; margin-bottom:14px;">
+      <button class="active" id="bModeSched" onclick="setBMode('schedule')">📅 スケジュール</button>
+      <button id="bModeBbs" onclick="setBMode('bbs')">💬 質問ボード</button>
     </div>
-    <div id="sListArea"><div class="b-empty">読み込み中…</div></div>
-  </div>
 
-  <div id="bModePaneBbs" style="display:none">
-    <div id="bSetupNotice" class="b-notice" style="display:none">
-      まだ接続先（GASのURL）が設定されていません。HTMLの <b>BBS_API</b> にデプロイしたURLを貼ってください。
+    <div id="bModePaneSched">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <span class="label">今後の予定（※モックアップです）</span>
+        <button class="b-ghost" id="sAddBtn" style="display:none; color:var(--accent); border-color:var(--accent);" onclick="sOpenForm()">＋ 予定追加</button>
+      </div>
+      <div id="sListArea"><div class="b-empty">読み込み中…</div></div>
     </div>
-    <div class="b-tabs">
-      <button class="active" id="bTabList" onclick="setBTab('list')">みんなの質問</button>
-      <button id="bTabPost" onclick="setBTab('post')">質問する</button>
-      <button id="bTabTicket" onclick="setBTab('ticket')">受付番号で確認</button>
-    </div>
-    <div id="bPaneList">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <span id="bCoachState" class="label"></span>
-        <button class="b-ghost" onclick="bLoadList()">↻ 更新</button>
+
+    <div id="bModePaneBbs" style="display:none">
+      <div id="bSetupNotice" class="b-notice" style="display:none">
+        まだ接続先（GASのURL）が設定されていません。HTMLの <b>BBS_API</b> にデプロイしたURLを貼ってください。
       </div>
-      <div id="bListArea"><div class="b-empty">読み込み中…</div></div>
-    </div>
-    <div id="bPanePost" style="display:none">
-      <div class="b-field">
-        <label>質問・聞きたいこと</label>
-        <textarea id="bQText" maxlength="500" placeholder="例：ステップバックのコツがわかりません"></textarea>
+      <div class="b-tabs">
+        <button class="active" id="bTabList" onclick="setBTab('list')">みんなの質問</button>
+        <button id="bTabPost" onclick="setBTab('post')">質問する</button>
+        <button id="bTabTicket" onclick="setBTab('ticket')">受付番号で確認</button>
       </div>
-      <div class="b-opts">
-        <label class="b-opt"><input type="checkbox" id="bQAnon"> 匿名で出す</label>
-      </div>
-      <div class="b-field" id="bNameField">
-        <label>名前</label>
-        <input type="text" id="bQName" maxlength="30" placeholder="例：イマムラ">
-      </div>
-      <div class="b-field">
-        <label>公開のしかた</label>
-        <div class="b-vseg" id="bVisSeg">
-          <button class="active" data-vis="public" onclick="setBVis('public',this)">みんなに見せる</button>
-          <button data-vis="private" onclick="setBVis('private',this)">コーチにだけ</button>
+      <div id="bPaneList">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <span id="bCoachState" class="label"></span>
+          <button class="b-ghost" onclick="bLoadList()">↻ 更新</button>
         </div>
-        <div class="b-hint" id="bVisHint">「みんなに見せる」＝掲示板に質問と回答が表示されます。</div>
+        <div id="bListArea"><div class="b-empty">読み込み中…</div></div>
       </div>
-      <button class="b-primary" onclick="bSubmit()">質問を送る</button>
-    </div>
-    <div id="bPaneTicket" style="display:none">
-      <div class="b-hint">「コーチにだけ」で送ったときの受付番号で回答を確認できます。</div>
-      <div class="b-field"><label>受付番号</label><input type="text" id="bTCode" maxlength="10" placeholder="例：A7K2Q9"></div>
-      <button class="b-primary" onclick="bCheckTicket()">確認する</button>
-      <div id="bTicketResult" style="margin-top:14px"></div>
+      <div id="bPanePost" style="display:none">
+        <div class="b-field">
+          <label>質問・聞きたいこと</label>
+          <textarea id="bQText" maxlength="500" placeholder="例：ステップバックのコツがわかりません"></textarea>
+        </div>
+        <div class="b-opts">
+          <label class="b-opt"><input type="checkbox" id="bQAnon"> 匿名で出す</label>
+        </div>
+        <div class="b-field" id="bNameField">
+          <label>名前</label>
+          <input type="text" id="bQName" maxlength="30" placeholder="例：イマムラ">
+        </div>
+        <div class="b-field">
+          <label>公開のしかた</label>
+          <div class="b-vseg" id="bVisSeg">
+            <button class="active" data-vis="public" onclick="setBVis('public',this)">みんなに見せる</button>
+            <button data-vis="private" onclick="setBVis('private',this)">コーチにだけ</button>
+          </div>
+          <div class="b-hint" id="bVisHint">「みんなに見せる」＝掲示板に質問と回答が表示されます。</div>
+        </div>
+        <button class="b-primary" onclick="bSubmit()">質問を送る</button>
+      </div>
+      <div id="bPaneTicket" style="display:none">
+        <div class="b-hint">「コーチにだけ」で送ったときの受付番号で回答を確認できます。</div>
+        <div class="b-field"><label>受付番号</label><input type="text" id="bTCode" maxlength="10" placeholder="例：A7K2Q9"></div>
+        <button class="b-primary" onclick="bCheckTicket()">確認する</button>
+        <div id="bTicketResult" style="margin-top:14px"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -1374,9 +1386,12 @@ function setMainTab(t){
   });
   document.querySelectorAll('.main-pane').forEach(p=>p.classList.remove('active'));
   document.getElementById('pane-'+t).classList.add('active');
+  
   if(t==='bbs') {
+    // タブを開いた瞬間は中身を隠し、ロック画面も一旦隠す
+    document.getElementById('bUnlockedContent').style.display = 'none';
+    document.getElementById('bLockScreen').style.display = 'none';
     bLoadList(); 
-    sRenderList(); // スケジュールも表示する
   }
 }
 
@@ -1857,15 +1872,48 @@ document.getElementById('bQAnon').addEventListener('change',function(){
   document.getElementById('bNameField').style.display=this.checked?'none':'';
 });
 async function bLoadList(){
-  if(!bConfigured()){document.getElementById('bSetupNotice').style.display='';document.getElementById('bListArea').innerHTML='';return;}
-  const area=document.getElementById('bListArea');area.innerHTML='<div class="b-empty">読み込み中…</div>';
-  const p={action:'list'};if(bCoachPass)p.coach=bCoachPass;if(bBoardPass)p.board=bBoardPass;
-  let res;try{res=await bApi(p);}catch(e){area.innerHTML='<div class="b-empty">接続できませんでした。</div>';return;}
-  if(!res.ok&&res.err==='board'){bAskBoardPass();return;}
-  if(!res.ok){area.innerHTML='<div class="b-empty">読み込めませんでした。</div>';return;}
+  if(!bConfigured()){
+    document.getElementById('bSetupNotice').style.display='';
+    document.getElementById('bUnlockedContent').style.display='';
+    document.getElementById('bListArea').innerHTML='';
+    return;
+  }
+  const area=document.getElementById('bListArea');
+  area.innerHTML='<div class="b-empty">読み込み中…</div>';
+  const p={action:'list'};
+  if(bCoachPass)p.coach=bCoachPass;
+  if(bBoardPass)p.board=bBoardPass;
+  
+  let res;
+  try{ res=await bApi(p); }
+  catch(e){ area.innerHTML='<div class="b-empty">接続できませんでした。</div>'; return; }
+  
+  // ▼ 合言葉が違う、または未入力の場合（ロック画面を表示）
+  if(!res.ok && res.err==='board'){
+    document.getElementById('bLockScreen').style.display = '';
+    bAskBoardPass(); // 合言葉入力モーダルを出す
+    return;
+  }
+  
+  // ▼ その他のエラー
+  if(!res.ok){
+    document.getElementById('bUnlockedContent').style.display = '';
+    area.innerHTML='<div class="b-empty">読み込めませんでした。</div>';
+    return;
+  }
+  
+  // ▼ 合言葉が通った場合（中身を表示してスケジュールを描画！）
+  document.getElementById('bLockScreen').style.display = 'none';
+  document.getElementById('bUnlockedContent').style.display = '';
   document.getElementById('bCoachState').textContent=res.coach?'コーチモードON':'';
-  if(!res.items.length){area.innerHTML='<div class="b-empty">まだ質問はありません。</div>';return;}
-  area.innerHTML=res.items.map(it=>bCardHTML(it,res.coach)).join('');
+  
+  // スケジュールとBBSの描画
+  sRenderList();
+  if(!res.items.length){
+    area.innerHTML='<div class="b-empty">まだ質問はありません。</div>';
+  }else{
+    area.innerHTML=res.items.map(it=>bCardHTML(it,res.coach)).join('');
+  }
 }
 function bCardHTML(it,coach){
   const who=it.anon?'<span class="who anon">匿名</span>':'<span class="who">'+esc(it.name||'名前なし')+'</span>';
