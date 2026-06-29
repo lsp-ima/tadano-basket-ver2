@@ -94,7 +94,7 @@ canvas{display:block;border-radius:10px;touch-action:none;box-shadow:0 4px 16px 
 .vid-toolrow button{font-size:11.5px;padding:7px 12px;color:var(--muted)}
 #vidArea{width:100%}
 
-/* 掲示板 */
+/* 掲示板・スケジュール */
 .board-topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;width:100%}
 .board-topbar h2{font-size:16px;font-weight:700;margin:0}
 .coachbadge{font-size:11px;color:#7fd18a;border:1px solid #2e7d32;background:#1a2a1e;padding:3px 10px;border-radius:20px}
@@ -131,16 +131,28 @@ canvas{display:block;border-radius:10px;touch-action:none;box-shadow:0 4px 16px 
 .b-vseg{display:inline-flex;border:1px solid #3a414b;border-radius:9px;overflow:hidden}
 .b-vseg button{background:#2d343d;border:none;color:var(--text);padding:9px 14px;font-size:13px;cursor:pointer}
 .b-vseg button.active{background:var(--accent);color:#fff;font-weight:600}
+
+/* 追加分：スケジュールカード用 */
+.s-tag{display:inline-block;padding:3px 9px;border-radius:6px;font-size:11px;font-weight:700;margin-bottom:10px}
+.s-tag.match{background:#3a2f1f;color:#ffcf8f;border:1px solid #6b4f25}
+.s-tag.tourney{background:#3a2326;color:#ffc9cd;border:1px solid #6b3a3f}
+.s-date{font-size:16px;font-weight:700;color:#fff;margin-bottom:10px}
+.s-detail{font-size:13px;line-height:1.6;color:var(--muted);margin-bottom:4px;display:flex;gap:10px}
+.s-detail .sl{min-width:60px;flex-shrink:0}
+.s-detail .sv{color:var(--text);font-weight:500;overflow-wrap:anywhere}
+.s-route{background:#161a1f;padding:10px 13px;border-radius:8px;font-size:12.5px;line-height:1.6;white-space:pre-wrap;margin-top:12px;border:1px solid #2a313a}
+.s-route-title{font-size:11.5px;color:var(--accent);font-weight:700;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+
 #bPaneList,#bPanePost,#bPaneTicket{width:100%}
 
 /* モーダル */
 .vl-overlay{position:fixed;inset:0;background:rgba(0,0,0,.62);display:none;align-items:center;justify-content:center;z-index:1000;padding:18px}
 .vl-overlay.show{display:flex}
-.vl-modal{background:var(--panel);border:1px solid #3a414b;border-radius:14px;padding:22px;width:100%;max-width:420px;box-shadow:0 14px 44px rgba(0,0,0,.55)}
+.vl-modal{background:var(--panel);border:1px solid #3a414b;border-radius:14px;padding:22px;width:100%;max-width:420px;box-shadow:0 14px 44px rgba(0,0,0,.55);max-height:90vh;overflow-y:auto}
 .vl-modal h3{margin:0 0 16px;font-size:15px;font-weight:600}
 .vl-field{margin-bottom:13px}
 .vl-field label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:6px}
-.vl-field input,.vl-field textarea{width:100%;font-size:13px;padding:10px 12px;border-radius:8px;border:1px solid #3a414b;background:#1f242b;color:var(--text);font-family:inherit}
+.vl-field input,.vl-field textarea,.vl-field select{width:100%;font-size:13px;padding:10px 12px;border-radius:8px;border:1px solid #3a414b;background:#1f242b;color:var(--text);font-family:inherit}
 .vl-field textarea{min-height:84px;resize:vertical;line-height:1.55}
 .vl-mbtns{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
 .vl-mbtns button{padding:9px 18px;border-radius:8px;font-size:13px;cursor:pointer;border:1px solid #3a414b}
@@ -157,8 +169,7 @@ canvas{display:block;border-radius:10px;touch-action:none;box-shadow:0 4px 16px 
 <nav class="main-tabs">
   <button class="active" onclick="setMainTab('board')">🏀 作戦盤</button>
   <button onclick="setMainTab('video')">🎬 動画</button>
-  <button onclick="setMainTab('bbs')">💬 質問</button>
-</nav>
+  <button onclick="setMainTab('bbs')">🔒 チーム</button> </nav>
 
 <div class="main-pane active" id="pane-board">
 
@@ -307,51 +318,66 @@ canvas{display:block;border-radius:10px;touch-action:none;box-shadow:0 4px 16px 
 
 <div class="main-pane" id="pane-bbs">
   <div class="board-topbar">
-    <h2>質問ボード</h2>
-    <div id="bCoachArea"><button class="b-ghost" onclick="openCoach()">コーチ</button></div>
+    <h2>チーム連絡・予定</h2> <div id="bCoachArea"><button class="b-ghost" onclick="openCoach()">コーチ</button></div>
   </div>
-  <div id="bSetupNotice" class="b-notice" style="display:none">
-    まだ接続先（GASのURL）が設定されていません。HTMLの <b>BBS_API</b> にデプロイしたURLを貼ってください。
+
+  <div class="sub-seg" style="margin-top:0; margin-bottom:14px;">
+    <button class="active" id="bModeSched" onclick="setBMode('schedule')">📅 スケジュール</button>
+    <button id="bModeBbs" onclick="setBMode('bbs')">💬 質問ボード</button>
   </div>
-  <div class="b-tabs">
-    <button class="active" id="bTabList" onclick="setBTab('list')">みんなの質問</button>
-    <button id="bTabPost" onclick="setBTab('post')">質問する</button>
-    <button id="bTabTicket" onclick="setBTab('ticket')">受付番号で確認</button>
+
+  <div id="bModePaneSched">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <span class="label">今後の予定（※モックアップです）</span>
+      <button class="b-ghost" id="sAddBtn" style="display:none; color:var(--accent); border-color:var(--accent);" onclick="sOpenForm()">＋ 予定追加</button>
+    </div>
+    <div id="sListArea"><div class="b-empty">読み込み中…</div></div>
   </div>
-  <div id="bPaneList">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-      <span id="bCoachState" class="label"></span>
-      <button class="b-ghost" onclick="bLoadList()">↻ 更新</button>
+
+  <div id="bModePaneBbs" style="display:none">
+    <div id="bSetupNotice" class="b-notice" style="display:none">
+      まだ接続先（GASのURL）が設定されていません。HTMLの <b>BBS_API</b> にデプロイしたURLを貼ってください。
     </div>
-    <div id="bListArea"><div class="b-empty">読み込み中…</div></div>
-  </div>
-  <div id="bPanePost" style="display:none">
-    <div class="b-field">
-      <label>質問・聞きたいこと</label>
-      <textarea id="bQText" maxlength="500" placeholder="例：ステップバックのコツがわかりません"></textarea>
+    <div class="b-tabs">
+      <button class="active" id="bTabList" onclick="setBTab('list')">みんなの質問</button>
+      <button id="bTabPost" onclick="setBTab('post')">質問する</button>
+      <button id="bTabTicket" onclick="setBTab('ticket')">受付番号で確認</button>
     </div>
-    <div class="b-opts">
-      <label class="b-opt"><input type="checkbox" id="bQAnon"> 匿名で出す</label>
-    </div>
-    <div class="b-field" id="bNameField">
-      <label>名前</label>
-      <input type="text" id="bQName" maxlength="30" placeholder="例：イマムラ">
-    </div>
-    <div class="b-field">
-      <label>公開のしかた</label>
-      <div class="b-vseg" id="bVisSeg">
-        <button class="active" data-vis="public" onclick="setBVis('public',this)">みんなに見せる</button>
-        <button data-vis="private" onclick="setBVis('private',this)">コーチにだけ</button>
+    <div id="bPaneList">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <span id="bCoachState" class="label"></span>
+        <button class="b-ghost" onclick="bLoadList()">↻ 更新</button>
       </div>
-      <div class="b-hint" id="bVisHint">「みんなに見せる」＝掲示板に質問と回答が表示されます。</div>
+      <div id="bListArea"><div class="b-empty">読み込み中…</div></div>
     </div>
-    <button class="b-primary" onclick="bSubmit()">質問を送る</button>
-  </div>
-  <div id="bPaneTicket" style="display:none">
-    <div class="b-hint">「コーチにだけ」で送ったときの受付番号で回答を確認できます。</div>
-    <div class="b-field"><label>受付番号</label><input type="text" id="bTCode" maxlength="10" placeholder="例：A7K2Q9"></div>
-    <button class="b-primary" onclick="bCheckTicket()">確認する</button>
-    <div id="bTicketResult" style="margin-top:14px"></div>
+    <div id="bPanePost" style="display:none">
+      <div class="b-field">
+        <label>質問・聞きたいこと</label>
+        <textarea id="bQText" maxlength="500" placeholder="例：ステップバックのコツがわかりません"></textarea>
+      </div>
+      <div class="b-opts">
+        <label class="b-opt"><input type="checkbox" id="bQAnon"> 匿名で出す</label>
+      </div>
+      <div class="b-field" id="bNameField">
+        <label>名前</label>
+        <input type="text" id="bQName" maxlength="30" placeholder="例：イマムラ">
+      </div>
+      <div class="b-field">
+        <label>公開のしかた</label>
+        <div class="b-vseg" id="bVisSeg">
+          <button class="active" data-vis="public" onclick="setBVis('public',this)">みんなに見せる</button>
+          <button data-vis="private" onclick="setBVis('private',this)">コーチにだけ</button>
+        </div>
+        <div class="b-hint" id="bVisHint">「みんなに見せる」＝掲示板に質問と回答が表示されます。</div>
+      </div>
+      <button class="b-primary" onclick="bSubmit()">質問を送る</button>
+    </div>
+    <div id="bPaneTicket" style="display:none">
+      <div class="b-hint">「コーチにだけ」で送ったときの受付番号で回答を確認できます。</div>
+      <div class="b-field"><label>受付番号</label><input type="text" id="bTCode" maxlength="10" placeholder="例：A7K2Q9"></div>
+      <button class="b-primary" onclick="bCheckTicket()">確認する</button>
+      <div id="bTicketResult" style="margin-top:14px"></div>
+    </div>
   </div>
 </div>
 
@@ -946,7 +972,6 @@ function hit(m){
   return null;
 }
 
-
 /* ================= ボード制御 ================= */
 function setCourt(mode){
   if(animating)stop();
@@ -970,8 +995,8 @@ function clearPaths(){
 function resetPositions(){ defaultPositions(); clearPaths(); }
 
 /* ================= マイプレー（保存処理） ================= */
-let lastRecording=null;          
-let myPlays=[];                  
+let lastRecording=null;         
+let myPlays=[];                 
 let storageOK=true;
 const MYKEY='baske_myplays_v1';
 
@@ -1341,6 +1366,7 @@ function resetVlib(){
   vlConfirm('初期構成に戻す','記事の並びに戻します。設定したURLは消えます。よろしいですか？',()=>{
     vlib=vclone(VLIB_SEED); vidPlayerIdx=0; persistVlib(); vlCloseModal(); renderVlib(); });
 }
+
 /* ===== メインタブ ===== */
 function setMainTab(t){
   document.querySelectorAll('.main-tabs button').forEach((b,i)=>{
@@ -1348,7 +1374,10 @@ function setMainTab(t){
   });
   document.querySelectorAll('.main-pane').forEach(p=>p.classList.remove('active'));
   document.getElementById('pane-'+t).classList.add('active');
-  if(t==='bbs') bLoadList();
+  if(t==='bbs') {
+    bLoadList(); 
+    sRenderList(); // スケジュールも表示する
+  }
 }
 
 /* ===== 共通モーダル・トースト ===== */
@@ -1659,12 +1688,146 @@ function importPlayerPlays(ev){
   r.readAsText(file);
 }
 
-/* ===== 掲示板 ===== */
+/* ===== 掲示板 & スケジュール ===== */
 const BBS_API='https://script.google.com/macros/s/AKfycbydXWXMWkUwh1QgVEg583EjHMBMUKJ-bdpBX1re0gtEW0Q2zdvEEQL_Feq3HsueSyiV/exec';
 let bTab='list',bVisMode='public',bCoachPass=null,bBoardPass=localStorage.getItem('baske_board_pass')||null;
+
+// -- スケジュール用仮データ（モックアップ） --
+let mockSchedules = [
+  {id:1, type:'tourney', date:'7月15日(土)', opponent:'〇〇中学校', venue:'市立第2体育館', meet:'08:30', end:'16:00', route:'08:00 町田駅集合\n08:10 小田急線発\n08:20 登戸駅着\n08:30 南武線へ乗り換え発\n09:00 分倍河原駅着', imamura:'あり'},
+  {id:2, type:'match', date:'7月22日(土)', opponent:'△△中学校', venue:'△△中学校 体育館', meet:'12:00', end:'17:00', route:'現地集合（自転車可）', imamura:'なし'}
+];
+
 function esc(s){return(s||'').toString().replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
 async function bApi(params){const url=BBS_API+'?'+new URLSearchParams(params).toString();const r=await fetch(url,{method:'GET'});return await r.json();}
 function bConfigured(){return BBS_API&&BBS_API.indexOf('http')===0;}
+
+// -- モード切替（スケジュール / 質問） --
+function setBMode(mode) {
+  document.getElementById('bModeSched').classList.toggle('active', mode === 'schedule');
+  document.getElementById('bModeBbs').classList.toggle('active', mode === 'bbs');
+  document.getElementById('bModePaneSched').style.display = mode === 'schedule' ? '' : 'none';
+  document.getElementById('bModePaneBbs').style.display = mode === 'bbs' ? '' : 'none';
+}
+
+// -- スケジュール描画 --
+function sRenderList() {
+  const area = document.getElementById('sListArea');
+  if (mockSchedules.length === 0) {
+    area.innerHTML = '<div class="b-empty">今後の予定は登録されていません。</div>';
+    return;
+  }
+  
+  let html = '';
+  mockSchedules.forEach(s => {
+    const isTourney = s.type === 'tourney';
+    const tagLabel = isTourney ? '🏆 大会' : '🏀 練習試合';
+    const tagClass = isTourney ? 'tourney' : 'match';
+    
+    // コーチログイン時のみ編集・削除ボタンを表示
+    const coachAction = bCoachPass ? `
+      <div class="b-cact" style="margin-top:12px; padding-top:12px; border-top:1px solid #2a313a">
+        <button onclick="sOpenForm(${s.id})">編集</button>
+        <button class="del" onclick="sDel(${s.id})">削除</button>
+      </div>
+    ` : '';
+
+    html += `
+    <div class="b-card">
+      <div class="s-tag ${tagClass}">${tagLabel}</div>
+      <div class="s-date">${esc(s.date)}</div>
+      <div class="s-detail"><span class="sl">対戦相手：</span><span class="sv">${esc(s.opponent)}</span></div>
+      <div class="s-detail"><span class="sl">会  場：</span><span class="sv">${esc(s.venue)}</span></div>
+      <div class="s-detail"><span class="sl">集合時間：</span><span class="sv">${esc(s.meet)}</span></div>
+      <div class="s-detail"><span class="sl">終了予定：</span><span class="sv">${esc(s.end)}</span></div>
+      <div class="s-detail"><span class="sl">今村引率：</span><span class="sv">${esc(s.imamura)}</span></div>
+      
+      ${s.route ? `
+      <div class="s-route">
+        <div class="s-route-title">🚃 経路・乗り換え</div>
+        ${escHtml(s.route)}
+      </div>` : ''}
+      
+      ${coachAction}
+    </div>`;
+  });
+  area.innerHTML = html;
+}
+
+// -- コーチ用スケジュール入力フォーム（モック） --
+function sOpenForm(id) {
+  const isEdit = id !== undefined;
+  const d = isEdit ? mockSchedules.find(s=>s.id === id) : {type:'match', date:'', opponent:'', venue:'', meet:'', end:'', route:'', imamura:'あり'};
+
+  let html = `<h3>${isEdit ? '予定を編集' : '予定を追加'}</h3>
+  <div class="vl-field">
+    <label>種類</label>
+    <select id="sf_type" style="width:100%; background:#1f242b;">
+      <option value="match" ${d.type==='match'?'selected':''}>練習試合</option>
+      <option value="tourney" ${d.type==='tourney'?'selected':''}>大会</option>
+    </select>
+  </div>
+  <div class="vl-field"><label>日付 (例: 7月15日(土))</label><input type="text" id="sf_date" value="${escAttr(d.date)}"></div>
+  <div class="row" style="gap:10px">
+    <div class="vl-field" style="flex:1"><label>対戦相手</label><input type="text" id="sf_opp" value="${escAttr(d.opponent)}"></div>
+    <div class="vl-field" style="flex:1"><label>会場</label><input type="text" id="sf_venue" value="${escAttr(d.venue)}"></div>
+  </div>
+  <div class="row" style="gap:10px">
+    <div class="vl-field" style="flex:1"><label>集合時間</label><input type="text" id="sf_meet" value="${escAttr(d.meet)}"></div>
+    <div class="vl-field" style="flex:1"><label>終了予定</label><input type="text" id="sf_end" value="${escAttr(d.end)}"></div>
+  </div>
+  <div class="vl-field">
+    <label>引率 (今村コーチ)</label>
+    <select id="sf_imamura" style="width:100%; background:#1f242b;">
+      <option value="あり" ${d.imamura==='あり'?'selected':''}>あり</option>
+      <option value="なし" ${d.imamura==='なし'?'selected':''}>なし</option>
+    </select>
+  </div>
+  <div class="vl-field"><label>経路・乗り換えメモ（改行OK）</label><textarea id="sf_route" style="min-height:90px">${escHtml(d.route)}</textarea></div>
+  
+  <div class="vl-mbtns">
+    <button class="ng" onclick="closeModal()">キャンセル</button>
+    <button class="ok" onclick="sSaveForm(${isEdit ? id : 'null'})">保存</button>
+  </div>`;
+  
+  showModal(html);
+}
+
+function sSaveForm(id) {
+  const newData = {
+    id: id !== null ? id : Date.now(),
+    type: document.getElementById('sf_type').value,
+    date: document.getElementById('sf_date').value,
+    opponent: document.getElementById('sf_opp').value,
+    venue: document.getElementById('sf_venue').value,
+    meet: document.getElementById('sf_meet').value,
+    end: document.getElementById('sf_end').value,
+    imamura: document.getElementById('sf_imamura').value,
+    route: document.getElementById('sf_route').value
+  };
+
+  if (id !== null) {
+    const idx = mockSchedules.findIndex(s => s.id === id);
+    if(idx > -1) mockSchedules[idx] = newData;
+  } else {
+    mockSchedules.push(newData);
+  }
+  
+  closeModal();
+  sRenderList();
+  toast('予定を保存しました（※現在は仮保存です）');
+}
+
+function sDel(id) {
+  vlConfirm('予定の削除', 'この予定を削除しますか？', () => {
+    mockSchedules = mockSchedules.filter(s => s.id !== id);
+    closeModal();
+    sRenderList();
+    toast('削除しました');
+  });
+}
+
+
 function setBTab(t){
   bTab=t;
   document.getElementById('bTabList').classList.toggle('active',t==='list');
@@ -1749,15 +1912,21 @@ function openCoach(){
 async function bCoachLogin(){
   const pass=document.getElementById('bCpass').value;if(!pass)return;
   let res;try{res=await bApi({action:'auth',coach:pass});}catch(e){toast('確認できませんでした');return;}
-  if(res.ok){bCoachPass=pass; closeModal();bUpdateCoachUI();toast('コーチモードON');bLoadList();}
+  if(res.ok){bCoachPass=pass; closeModal();bUpdateCoachUI();toast('コーチモードON');bLoadList();sRenderList();}
   else toast('パスワードが違います');
 }
-function bCoachOff(){bCoachPass=null; closeModal();bUpdateCoachUI();bLoadList();}
+function bCoachOff(){bCoachPass=null; closeModal();bUpdateCoachUI();bLoadList();sRenderList();}
+
 function bUpdateCoachUI(){
+  // 質問ボードのコーチボタン更新
   document.getElementById('bCoachArea').innerHTML=bCoachPass
     ?'<span class="coachbadge">コーチON</span> <button class="b-ghost" onclick="openCoach()">OFF</button>'
     :'<button class="b-ghost" onclick="openCoach()">コーチ</button>';
+  
+  // スケジュール追加ボタンの表示更新
+  document.getElementById('sAddBtn').style.display = bCoachPass ? '' : 'none';
 }
+
 function bOpenAnswer(id){
   showModal('<h3>回答する</h3><div class="vl-field"><label>回答</label><textarea id="bAText" maxlength="800" style="min-height:110px"></textarea></div><div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button><button class="ok" onclick="bSendAnswer(\''+id+'\')">送信</button></div>');
   setTimeout(()=>{const el=document.getElementById('bAText');if(el)el.focus();},50);
