@@ -1323,7 +1323,7 @@ function vrowHTML(loc, idx){
   const v=getVideos(loc)[idx];
   const has = v.url && v.url.trim();
   const main = has
-    ? `<a class="vl-main" href="${escAttr(v.url)}" target="_blank" rel="noopener"><span class="ic">▶</span><span class="lab">${escHtml(v.label)}</span></a>`
+    ? `<span class="vl-main" style="cursor:pointer" onclick="openVideo('${loc}',${idx})"><span class="ic">▶</span><span class="lab">${escHtml(v.label)}</span></span>`
     : `<span class="vl-main"><span class="ic">＋</span><span class="lab">${escHtml(v.label)}<span class="tag">URL未設定</span></span></span>`;
   return `<div class="vl-row ${has?'has':'empty'}">${main}
     <span class="vl-act">
@@ -1374,6 +1374,50 @@ function renderVlib(){
 }
 
 function setVidPlayer(i){ vidPlayerIdx=i; renderVlib(); }
+
+/* === アプリ内で動画を再生（YouTube埋め込み） === */
+function ytEmbed(url){
+  if(!url) return null;
+  url=String(url).trim();
+  let start=0;
+  const tm=url.match(/[?&](?:t|start)=(\d+)/);
+  if(tm) start=parseInt(tm[1],10)||0;
+  const st = start?('&start='+start):'';
+  let m;
+  if(m=url.match(/[?&]list=([\w-]+)/)){
+    const vid=url.match(/[?&]v=([\w-]+)/);
+    const src = vid
+      ? 'https://www.youtube-nocookie.com/embed/'+vid[1]+'?rel=0&list='+m[1]+st
+      : 'https://www.youtube-nocookie.com/embed/videoseries?list='+m[1];
+    return {src, portrait:false};
+  }
+  let id=null, portrait=false;
+  if(m=url.match(/shorts\/([\w-]+)/)){ id=m[1]; portrait=true; }
+  else if(m=url.match(/youtu\.be\/([\w-]+)/)){ id=m[1]; }
+  else if(m=url.match(/[?&]v=([\w-]+)/)){ id=m[1]; }
+  else if(m=url.match(/embed\/([\w-]+)/)){ id=m[1]; }
+  if(!id) return null;
+  return {src:'https://www.youtube-nocookie.com/embed/'+id+'?rel=0'+st, portrait};
+}
+function openVideo(loc, idx){
+  const v=getVideos(loc)[idx];
+  if(!v || !v.url || !v.url.trim()) return;
+  const emb=ytEmbed(v.url);
+  if(!emb){ window.open(v.url,'_blank','noopener'); return; }
+  const modal=document.getElementById('vlModal');
+  const wrapStyle = emb.portrait
+    ? 'position:relative;width:min(60vh,320px);aspect-ratio:9/16;margin:0 auto'
+    : 'position:relative;width:100%;aspect-ratio:16/9';
+  modal.style.maxWidth = emb.portrait ? '380px' : '760px';
+  modal.innerHTML =
+    '<h3 style="margin-bottom:12px">'+escHtml(v.label)+'</h3>'+
+    '<div style="'+wrapStyle+'"><iframe src="'+escAttr(emb.src)+'" '+
+      'style="position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:12px;background:#000" '+
+      'allow="accelerometer;autoplay;encrypted-media;gyroscope;picture-in-picture" allowfullscreen></iframe></div>'+
+    '<div class="vl-mbtns"><a class="ng" style="text-decoration:none;display:inline-flex;align-items:center" href="'+escAttr(v.url)+'" target="_blank" rel="noopener">YouTubeで開く</a>'+
+    '<button class="ok" onclick="closeModal()">閉じる</button></div>';
+  document.getElementById('vlOverlay').classList.add('show');
+}
 
 
 function vlCloseModal(){ document.getElementById('vlOverlay').classList.remove('show'); }
@@ -1486,7 +1530,7 @@ function setMainTab(t){
 }
 
 function showModal(html){document.getElementById('vlModal').innerHTML=html;document.getElementById('vlOverlay').classList.add('show');}
-function closeModal(){document.getElementById('vlOverlay').classList.remove('show');}
+function closeModal(){const m=document.getElementById('vlModal');m.style.maxWidth='';m.innerHTML='';document.getElementById('vlOverlay').classList.remove('show');}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
 
 let boardSub='coach';
