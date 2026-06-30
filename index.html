@@ -221,7 +221,7 @@ canvas{display:block;border-radius:var(--radius);touch-action:none;box-shadow:va
 <body>
 
 <script>
-// 【重要】今村さんの本番用GASのウェブアプリURLをセットしてあります
+// 忠生中バスケ部 専用（GAS版）。作戦盤・動画・ランもGASに保存して全端末で共有。
 const BBS_API = 'https://script.google.com/macros/s/AKfycbxhTaajehnNuKh_s9Kv-bzIr-ofZ1RTA6DwJR-gqjtnIzrxP7dTqZTruduUpQB_51yI/exec';
 
 // エラー防止のためのユーティリティ関数
@@ -266,6 +266,22 @@ function formatSchedTime(val) {
     }
     return s;
   } catch(e) { return String(val); }
+}
+
+/* ===== GAS共有ストレージ（作戦盤・動画・ランを全端末で共有） ===== */
+async function bDataGet(key){
+  try{
+    const url = BBS_API + '?' + new URLSearchParams({action:'data_get', key:key}).toString();
+    const r = await fetch(url, {method:'GET'});
+    const j = await r.json();
+    return (j && j.ok) ? (j.value||'') : '';
+  }catch(e){ return ''; }
+}
+function bDataSave(key, value){
+  try{
+    // 大きいデータも送れるようにPOST（text/plainでCORSプリフライト回避）
+    fetch(BBS_API, {method:'POST', body: JSON.stringify({action:'data_save', key:key, value:value})});
+  }catch(e){}
 }
 </script>
 
@@ -348,8 +364,8 @@ function formatSchedTime(val) {
     </fieldset>
 
     <fieldset class="fs">
-      <legend>マイプレー（コーチ）</legend>
-      <div id="myPlayButtons"><span class="label">まだありません。</span></div>
+      <legend>マイプレー（チーム共有）</legend>
+      <div id="myPlayButtons"><span class="label">読み込み中…</span></div>
       <div class="row" style="margin-top:8px">
         <button onclick="exportPlays()">⬇ バックアップ</button>
         <button onclick="document.getElementById('importFile').click()">⬆ 読み込む</button>
@@ -397,8 +413,8 @@ function formatSchedTime(val) {
     </fieldset>
 
     <fieldset class="fs">
-      <legend>みんなのラン</legend>
-      <div id="playerPlayButtons"><span class="label">まだありません。ランを描いて保存してみよう。</span></div>
+      <legend>みんなのラン（チーム共有）</legend>
+      <div id="playerPlayButtons"><span class="label">読み込み中…</span></div>
       <div class="row" style="margin-top:8px">
         <button onclick="exportPlayerPlays()">⬇ バックアップ</button>
         <button onclick="document.getElementById('importFileP').click()">⬆ 読み込む</button>
@@ -409,7 +425,7 @@ function formatSchedTime(val) {
 </div>
 
 <div class="main-pane" id="pane-video">
-  <div class="vid-help">各動画の「✎」で名称とURLを編集できます。URLを入れると「▶」からYouTubeが開きます。</div>
+  <div class="vid-help">各動画の「✎」で名称とURLを編集できます。URLを入れると「▶」でアプリ内再生されます。（チーム全員で共有）</div>
   <div class="vid-tabs">
     <button class="active" data-vcat="all" onclick="setVidTab('all',this)">全員</button>
     <button data-vcat="player" onclick="setVidTab('player',this)">選手ごと</button>
@@ -1101,26 +1117,21 @@ function resetPositions(){ defaultPositions(); clearPaths(); }
 
 let lastRecording=null;
 let myPlays=[];
-let storageOK=true;
-const MYKEY='baske_myplays_v1';
+const MYKEY='plays';
 
-function loadMyPlays(){
-  try{ const s=localStorage.getItem(MYKEY); myPlays = s?JSON.parse(s):[]; }
-  catch(e){ myPlays=[]; storageOK=false; }
+async function loadMyPlays(){
+  try{ const s=await bDataGet(MYKEY); myPlays = s?JSON.parse(s):[]; if(!Array.isArray(myPlays))myPlays=[]; }
+  catch(e){ myPlays=[]; }
 }
 function persistMyPlays(){
-  try{ localStorage.setItem(MYKEY, JSON.stringify(myPlays)); }
-  catch(e){
-    if(storageOK){ storageOK=false;
-      alert('この環境では自動保存ができないようです。\n「⬇ バックアップを書き出す」でファイルとして保存してください。'); }
-  }
+  bDataSave(MYKEY, JSON.stringify(myPlays));
 }
 
 function renderMyPlays(){
   const box=document.getElementById('myPlayButtons');
   box.innerHTML='';
   if(!myPlays.length){
-    box.innerHTML='<span class="label">まだありません。「● 自分で記録」→ ドラッグ → 保存で追加できます。</span>';
+    box.innerHTML='<span class="label">まだありません。「✏️ ルートを描く」→ 描く → 保存で追加できます（全員に共有）。</span>';
     return;
   }
   myPlays.forEach((sp,idx)=>{
@@ -1145,7 +1156,7 @@ function saveCurrentPlay(){
   persistMyPlays(); renderMyPlays();
   inp.value=''; document.getElementById('saveBox').style.display='none';
   lastRecording=null;
-  document.getElementById('status').textContent='「'+name+'」をマイプレーに保存しました。';
+  document.getElementById('status').textContent='「'+name+'」をマイプレーに保存しました（全員に共有）。';
 }
 
 function loadMyPlay(idx,btn){
@@ -1177,7 +1188,7 @@ function loadMyPlay(idx,btn){
 
 function deleteMyPlay(idx){
   const sp=myPlays[idx]; if(!sp)return;
-  vlConfirm('プレーを削除','「'+sp.name+'」を削除しますか？',()=>{
+  vlConfirm('プレーを削除','「'+sp.name+'」を削除しますか？（全員から消えます）',()=>{
     myPlays.splice(idx,1); persistMyPlays(); renderMyPlays(); vlCloseModal();
   });
 }
@@ -1208,10 +1219,10 @@ function importPlays(ev){
 }
 
 /* ========================================================
-   動画ライブラリの復元部分
+   動画ライブラリ（GAS共有）
 ======================================================== */
-const VLIBKEY='baske_vlib_v1';
-let vlib=null, vidTab='all', vidPlayerIdx=0, vlibStorageOK=true;
+const VLIBKEY='vlib';
+let vlib=null, vidTab='all', vidPlayerIdx=0;
 
 const VLIB_SEED = {
   all: {
@@ -1294,16 +1305,14 @@ const VLIB_SEED = {
   ]
 };
 
-function loadVlib(){
-  try{ const s=localStorage.getItem(VLIBKEY); vlib = s?JSON.parse(s):vclone(VLIB_SEED); }
-  catch(e){ vlib=vclone(VLIB_SEED); vlibStorageOK=false; }
-  if(!vlib.all||!vlib.bteam||!Array.isArray(vlib.players)) vlib=vclone(VLIB_SEED);
+async function loadVlib(){
+  try{ const s=await bDataGet(VLIBKEY); vlib = s?JSON.parse(s):vclone(VLIB_SEED); }
+  catch(e){ vlib=vclone(VLIB_SEED); }
+  if(!vlib||!vlib.all||!vlib.bteam||!Array.isArray(vlib.players)) vlib=vclone(VLIB_SEED);
 }
 
 function persistVlib(){
-  try{ localStorage.setItem(VLIBKEY, JSON.stringify(vlib)); }
-  catch(e){ if(vlibStorageOK){ vlibStorageOK=false;
-    alert('この環境では自動保存ができません。\n「⬇ バックアップ」でファイルに保存してください。'); } }
+  bDataSave(VLIBKEY, JSON.stringify(vlib));
 }
 
 function getVideos(loc){
@@ -1347,6 +1356,7 @@ function sectionHTML(loc){
 
 function renderVlib(){
   const area=document.getElementById('vidArea');
+  if(!vlib){ area.innerHTML='<div class="b-empty">読み込み中…</div>'; return; }
   if(vidTab==='all'){ area.innerHTML=sectionHTML('all'); return; }
   if(vidTab==='bteam'){ area.innerHTML=sectionHTML('bteam'); return; }
   if(!vlib.players.length){
@@ -1457,7 +1467,7 @@ function setVidUrl(loc,idx){
 }
 function delVid(loc,idx){
   const v=getVideos(loc)[idx];
-  vlConfirm('動画を削除','「'+v.label+'」を削除しますか？',()=>{
+  vlConfirm('動画を削除','「'+v.label+'」を削除しますか？（全員から消えます）',()=>{
     getVideos(loc).splice(idx,1); persistVlib(); vlCloseModal(); renderVlib(); });
 }
 function addVid(loc){
@@ -1522,6 +1532,8 @@ function setMainTab(t){
   document.querySelectorAll('.main-pane').forEach(p=>p.classList.remove('active'));
   document.getElementById('pane-'+t).classList.add('active');
 
+  if(t==='video'){ loadVlib().then(renderVlib); }
+  if(t==='board'){ loadMyPlays().then(renderMyPlays); loadPlayerPlays().then(renderPlayerPlays); }
   if(t==='bbs') {
     document.getElementById('bUnlockedContent').style.display = 'none';
     document.getElementById('bLockScreen').style.display = 'none';
@@ -1588,7 +1600,7 @@ canvas.addEventListener('pointercancel',()=>{
   drag=null; draw();
 });
 
-const PLAYER_PLAYS_KEY='baske_playerplays_v1';
+const PLAYER_PLAYS_KEY='pplays';
 let playerPlays=[],playerRouteMode=false;
 let playerRouteActions=[],playerRouteStart=null,playerDrawing=null;
 let playerDrawMode='move',playerAnimating=false,playerRaf=null;
@@ -1738,13 +1750,12 @@ function clearPathsPlayer(){
   playerRouteActions=[];playerPaths=[...offense,...defense].map(()=>[]);playerBallPath=[];
   draw();
 }
-function loadPlayerPlays(){
-  try{const s=localStorage.getItem(PLAYER_PLAYS_KEY);playerPlays=s?JSON.parse(s):[];}
+async function loadPlayerPlays(){
+  try{const s=await bDataGet(PLAYER_PLAYS_KEY);playerPlays=s?JSON.parse(s):[]; if(!Array.isArray(playerPlays))playerPlays=[];}
   catch(e){playerPlays=[];}
 }
 function persistPlayerPlays(){
-  try{localStorage.setItem(PLAYER_PLAYS_KEY,JSON.stringify(playerPlays));}
-  catch(e){}
+  bDataSave(PLAYER_PLAYS_KEY, JSON.stringify(playerPlays));
 }
 function savePlayerPlay(){
   const name=(document.getElementById('playNameP').value||'').trim();
@@ -1759,7 +1770,7 @@ function savePlayerPlay(){
 }
 function renderPlayerPlays(){
   const box=document.getElementById('playerPlayButtons');
-  if(!playerPlays.length){box.innerHTML='';return;}
+  if(!playerPlays.length){box.innerHTML='<span class="label">まだありません。ランを描いて保存してみよう（全員に共有）。</span>';return;}
   box.innerHTML='';
   playerPlays.forEach((sp,idx)=>{
     const wrap=document.createElement('span');wrap.className='myplay';
@@ -1809,7 +1820,7 @@ function loadPlayerPlay(idx,btn){
   draw();
 }
 
-/* ===== 掲示板・スケジュール本番用通信処理 ===== */
+/* ===== 掲示板・スケジュール（GAS：既存のまま） ===== */
 function safeLSget(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
 function safeLSset(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
 let bTab='list',bVisMode='public',bCoachPass=null,bBoardPass=safeLSget('baske_board_pass')||null;
@@ -1955,7 +1966,13 @@ function bBoardLogin(){bBoardPass=document.getElementById('bBpass').value; safeL
 
 let currentSchedules=[];
 
-loadMyPlays();renderMyPlays(); loadPlayerPlays();renderPlayerPlays(); buildPlayButtons(); layout();resetPositions();draw(); loadVlib();renderVlib();
+(async function init(){
+  await loadMyPlays(); renderMyPlays();
+  await loadPlayerPlays(); renderPlayerPlays();
+  buildPlayButtons();
+  layout(); resetPositions(); draw();
+  await loadVlib(); renderVlib();
+})();
 document.getElementById('vlOverlay').addEventListener('click',e=>{if(e.target.id==='vlOverlay')closeModal();}); document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 if(!bConfigured()){ document.getElementById('bSetupNotice').style.display=''; document.getElementById('bListArea').innerHTML=''; }
 </script>
