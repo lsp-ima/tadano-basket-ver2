@@ -2139,7 +2139,7 @@ function renderScoreList(){
   list.forEach(e=>{
     const total=scEntryTotal(e), opp=parseInt(e.opp,10)||0;
     const mark = total>opp?'〇 勝':(total<opp?'● 負':'△ 分');
-    html+='<div class="b-card"><div class="s-tag match">'+mark+'　'+(e.target==='AB'?'A・B':'A')+'</div>'+
+    html+='<div class="b-card"><div class="s-tag match">'+mark+'　'+scTargetLabel(e.target)+'</div>'+
       '<div class="s-date">'+esc(formatSchedDate(e.date))+'　vs '+esc(e.opponent||'')+'</div>'+
       '<div class="s-date" style="font-size:22px">自 '+total+' － '+opp+' 相手</div>'+
       '<div class="b-cact"><button onclick="openScoreEntry(\''+e.id+'\')">'+(coach?'得点を入力／見る':'詳細を見る')+'</button>'+
@@ -2147,19 +2147,31 @@ function renderScoreList(){
   });
   area.innerHTML=html;
 }
+function scTargetLabel(t){ return t==='AB'?'A・B':(t==='B'?'B':'A'); }
+function scPlayersByTarget(target){
+  if(!roster) return [];
+  if(target==='AB') return roster.filter(p=>p.team==='A'||p.team==='B');
+  if(target==='B') return roster.filter(p=>p.team==='B');
+  return roster.filter(p=>p.team==='A');
+}
 async function scAddGame(){
   await loadRoster();
-  vlFormModal('試合スコアを追加',[
-    {key:'date',label:'日付（例：2026-07-10）',value:''},
-    {key:'opponent',label:'対戦相手',value:''},
-    {key:'target',label:'対象（A または AB）',value:'A'}
-  ],r=>{
-    const target=(r.target||'').toUpperCase()==='AB'?'AB':'A';
-    const players = target==='AB' ? roster.filter(p=>p.team==='A'||p.team==='B') : roster.filter(p=>p.team==='A');
-    const rows = players.slice().sort((a,b)=>(parseInt(a.num,10)||999)-(parseInt(b.num,10)||999)).map(p=>({id:p.id,name:p.name,num:p.num||'',pts:0}));
-    const entry={id:'sc_'+Date.now(), date:(r.date||'').trim(), opponent:(r.opponent||'').trim(), target, rows, opp:''};
-    scores.push(entry); persistScores(); vlCloseModal(); renderScoreList(); openScoreEntry(entry.id);
-  });
+  let html='<h3>試合スコアを追加</h3>'+
+    '<div class="vl-field"><label>日付</label><input type="date" id="scfDate"></div>'+
+    '<div class="vl-field"><label>対戦相手</label><input type="text" id="scfOpp" placeholder="例：松が谷高校"></div>'+
+    '<div class="vl-field"><label>対象チーム</label><select id="scfTarget"><option value="A">Aチームのみ</option><option value="B">Bチームのみ</option><option value="AB">A・B両方</option></select></div>'+
+    '<div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button><button class="ok" onclick="scDoAdd()">保存</button></div>';
+  showModal(html);
+  setTimeout(()=>{const e=document.getElementById('scfDate');if(e)e.focus();},50);
+}
+function scDoAdd(){
+  const date=(document.getElementById('scfDate').value||'').trim();
+  const oppName=(document.getElementById('scfOpp').value||'').trim();
+  const target=document.getElementById('scfTarget').value;
+  const players=scPlayersByTarget(target);
+  const rows = players.slice().sort((a,b)=>(parseInt(a.num,10)||999)-(parseInt(b.num,10)||999)).map(p=>({id:p.id,name:p.name,num:p.num||'',pts:0}));
+  const entry={id:'sc_'+Date.now(), date, opponent:oppName, target, rows, opp:''};
+  scores.push(entry); persistScores(); closeModal(); renderScoreList(); openScoreEntry(entry.id);
 }
 function scDel(id){ vlConfirm('スコアを削除','このスコアを削除しますか？',()=>{ scores=scores.filter(e=>e.id!==id); persistScores(); vlCloseModal(); renderScoreList(); }); }
 function scLiveTotal(){ if(!scCur)return 0; let t=0; (scCur.rows||[]).forEach(r=>t+=(parseInt(r.pts,10)||0)); return t; }
@@ -2171,7 +2183,7 @@ function openScoreEntry(id){
   html+='<div class="b-hint">自チーム選手の得点（背番号順）'+(coach?'':'／入力はコーチのみ')+'</div>';
   if(!scCur.rows||!scCur.rows.length){ html+='<div class="b-empty">対象選手がいません（メンバーでA/Bを振り分けてから追加してください）。</div>'; }
   (scCur.rows||[]).forEach((r,i)=>{
-    html+='<div class="vl-row"><span class="vl-main"><span class="ic">'+esc(r.num||'?')+'</span>'+(coach?'<span class="lab">'+esc(r.name)+'</span>':'')+'</span><span class="vl-act">'+
+    html+='<div class="vl-row"><span class="vl-main"><span class="ic">'+esc(r.num||'?')+'</span><span class="lab">'+esc(r.name)+'</span></span><span class="vl-act">'+
       (coach?'<input type="text" inputmode="numeric" style="width:64px;text-align:center;padding:7px" value="'+esc(String(r.pts||''))+'" onchange="scSetRow('+i+',this.value)">':'<span class="lab" style="font-weight:700">'+esc(String(r.pts||0))+'</span>')+'</span></div>';
   });
   html+='<div class="b-field" style="margin-top:10px"><label>相手チーム得点（任意）</label>'+
