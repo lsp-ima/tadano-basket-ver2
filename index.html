@@ -294,6 +294,8 @@ function bDataSave(key, value){
   <button class="active" onclick="setMainTab('board')">🏀 作戦盤</button>
   <button onclick="setMainTab('video')">🎬 動画</button>
   <button onclick="setMainTab('bbs')">🔒 チーム</button>
+  <button onclick="setMainTab('score')">🏀 スコア</button>
+  <button id="navRoster" style="display:none" onclick="setMainTab('roster')">👥 メンバー</button>
 </nav>
 
 <div class="main-pane active" id="pane-board">
@@ -512,6 +514,18 @@ function bDataSave(key, value){
       </div>
     </div>
   </div>
+</div>
+
+<div class="main-pane" id="pane-score">
+  <div class="board-topbar"><h2>スコア</h2></div>
+  <div class="b-hint">試合ごとの得点記録（日程を消しても残ります）。記録はコーチが入力します。</div>
+  <div id="scoreArea"><div class="b-empty">読み込み中…</div></div>
+</div>
+
+<div class="main-pane" id="pane-roster">
+  <div class="board-topbar"><h2>メンバー（1・2年女子）</h2></div>
+  <div class="b-hint">この画面はコーチ専用です。A/Bの振り分け・背番号を設定します。</div>
+  <div id="rosterArea"><div class="b-empty">読み込み中…</div></div>
 </div>
 
 <div class="vl-overlay" id="vlOverlay"><div class="vl-modal" id="vlModal"></div></div>
@@ -1527,13 +1541,15 @@ function resetVlib(){
 /* ===== メインタブ ===== */
 function setMainTab(t){
   document.querySelectorAll('.main-tabs button').forEach((b,i)=>{
-    b.classList.toggle('active',['board','video','bbs'][i]===t);
+    b.classList.toggle('active',['board','video','bbs','score','roster'][i]===t);
   });
   document.querySelectorAll('.main-pane').forEach(p=>p.classList.remove('active'));
   document.getElementById('pane-'+t).classList.add('active');
 
   if(t==='video'){ loadVlib().then(renderVlib); }
   if(t==='board'){ loadMyPlays().then(renderMyPlays); loadPlayerPlays().then(renderPlayerPlays); }
+  if(t==='roster'){ loadRoster().then(renderRoster); }
+  if(t==='score'){ loadScores().then(renderScoreList); }
   if(t==='bbs') {
     document.getElementById('bUnlockedContent').style.display = 'none';
     document.getElementById('bLockScreen').style.display = 'none';
@@ -1856,7 +1872,7 @@ async function sRenderList() {
     const isTourney = s.type === 'tourney';
     const tagLabel = isTourney ? '🏆 大会' : '🏀 練習試合';
     const tagClass = isTourney ? 'tourney' : 'match';
-    const coachAction = bCoachPass ? `<div class="b-cact" style="margin-top:12px; padding-top:12px; border-top:1px solid #2a313a"><button onclick="sOpenForm('${s.id}')">編集</button><button class="del" onclick="sDel('${s.id}')">削除</button></div>` : '';
+    const coachAction = `<div class="b-cact" style="margin-top:12px; padding-top:12px; border-top:1px solid #2a313a; flex-wrap:wrap"><button onclick="openAtt('${s.id}')">📋 出欠</button>${bCoachPass?`<button onclick="sOpenForm('${s.id}')">編集</button><button class="del" onclick="sDel('${s.id}')">削除</button>`:''}</div>`;
     html += `<div class="b-card"><div class="s-tag ${tagClass}">${tagLabel}</div><div class="s-date">${esc(formatSchedDate(s.date))}</div><div class="s-detail"><span class="sl">対戦相手：</span><span class="sv">${esc(s.opponent)}</span></div><div class="s-detail"><span class="sl">会 場：</span><span class="sv">${esc(s.venue)}</span></div><div class="s-detail"><span class="sl">集合時間：</span><span class="sv">${esc(formatSchedTime(s.meet))}</span></div><div class="s-detail"><span class="sl">終了予定：</span><span class="sv">${esc(formatSchedTime(s.end))}</span></div><div class="s-detail"><span class="sl">今村引率：</span><span class="sv">${esc(s.imamura)}</span></div>${s.route ? `<div class="s-route"><div class="s-route-title">🚃 経路・乗り換え</div>${escHtml(s.route)}</div>` : ''}${coachAction}</div>`;
   });
   area.innerHTML = html;
@@ -1934,12 +1950,12 @@ document.getElementById('bQAnon').addEventListener('change',function(){
 });
 async function bLoadList(){
   if(!bConfigured()){ document.getElementById('bSetupNotice').style.display=''; document.getElementById('bUnlockedContent').style.display=''; document.getElementById('bListArea').innerHTML=''; return; }
+  sRenderList(); // スケジュールを並行で先読み（質問の完了を待たない）
   const area=document.getElementById('bListArea'); area.innerHTML='<div class="b-empty">読み込み中…</div>'; const p={action:'list'}; if(bCoachPass)p.coach=bCoachPass; if(bBoardPass)p.board=bBoardPass;
   let res; try{ res=await bApi(p); } catch(e){ area.innerHTML='<div class="b-empty">接続できませんでした。</div>'; return; }
   if(!res.ok && res.err==='board'){ document.getElementById('bLockScreen').style.display = ''; bAskBoardPass(); return; }
   if(!res.ok){ document.getElementById('bUnlockedContent').style.display = ''; area.innerHTML='<div class="b-empty">読み込めませんでした。</div>'; return; }
   document.getElementById('bLockScreen').style.display = 'none'; document.getElementById('bUnlockedContent').style.display = ''; document.getElementById('bCoachState').textContent=res.coach?'コーチモードON':'';
-  sRenderList();
   if(!res.items.length){ area.innerHTML='<div class="b-empty">まだ質問はありません。</div>'; }else{ area.innerHTML=res.items.map(it=>bCardHTML(it,res.coach)).join(''); }
 }
 function bCardHTML(it,coach){
@@ -1956,7 +1972,12 @@ async function bCheckTicket(){ if(!bConfigured())return; const t=document.getEle
 function openCoach(){ if(bCoachPass){showModal('<h3>コーチモード</h3><p style="font-size:13px">現在ONです。OFFにしますか？</p><div class="vl-mbtns"><button class="ng" onclick="closeModal()">そのまま</button><button class="ok" onclick="bCoachOff()">OFFにする</button></div>');return;} showModal('<h3>コーチモード</h3><div class="vl-field"><label>コーチ用パスワード</label><input type="text" id="bCpass" placeholder="パスワード"></div><div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button><button class="ok" onclick="bCoachLogin()">ログイン</button></div>'); setTimeout(()=>{const el=document.getElementById('bCpass');if(el)el.focus();},50); }
 async function bCoachLogin(){ const pass=document.getElementById('bCpass').value;if(!pass)return; let res;try{res=await bApi({action:'auth',coach:pass});}catch(e){toast('確認できませんでした');return;} if(res.ok){bCoachPass=pass; closeModal();bUpdateCoachUI();toast('コーチモードON');bLoadList();} else toast('パスワードが違います'); }
 function bCoachOff(){bCoachPass=null; closeModal();bUpdateCoachUI();bLoadList();}
-function bUpdateCoachUI(){ document.getElementById('bCoachArea').innerHTML=bCoachPass ?'<span class="coachbadge">コーチON</span> <button class="b-ghost" onclick="openCoach()">OFF</button>' :'<button class="b-ghost" onclick="openCoach()">コーチ</button>'; document.getElementById('sAddBtn').style.display = bCoachPass ? '' : 'none'; }
+function bUpdateCoachUI(){ document.getElementById('bCoachArea').innerHTML=bCoachPass ?'<span class="coachbadge">コーチON</span> <button class="b-ghost" onclick="openCoach()">OFF</button>' :'<button class="b-ghost" onclick="openCoach()">コーチ</button>'; document.getElementById('sAddBtn').style.display = bCoachPass ? '' : 'none';
+  // メンバータブはコーチモードの時だけ表示
+  const navR=document.getElementById('navRoster'); if(navR) navR.style.display = bCoachPass ? '' : 'none';
+  if(!bCoachPass){ const pr=document.getElementById('pane-roster'); if(pr && pr.classList.contains('active')) setMainTab('score'); }
+  if(document.getElementById('pane-score') && document.getElementById('pane-score').classList.contains('active')) renderScoreList();
+}
 function bOpenAnswer(id){ showModal('<h3>回答する</h3><div class="vl-field"><label>回答</label><textarea id="bAText" maxlength="800" style="min-height:110px"></textarea></div><div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button><button class="ok" onclick="bSendAnswer(\''+id+'\')">送信</button></div>'); setTimeout(()=>{const el=document.getElementById('bAText');if(el)el.focus();},50); }
 async function bSendAnswer(id){ const text=document.getElementById('bAText').value.trim();if(!text)return; let res;try{res=await bApi({action:'answer',id,text,coach:bCoachPass});}catch(e){toast('送信できませんでした');return;} if(res.ok){closeModal();toast('回答しました');bLoadList();}else toast('送信できませんでした'); }
 function bDelQ(id){vlConfirm('質問を削除','この質問を削除しますか？元に戻せません。',()=>{bDoDel(id);});}
@@ -1964,14 +1985,214 @@ async function bDoDel(id){ let res;try{res=await bApi({action:'delete',id,coach:
 function bAskBoardPass(){ showModal('<h3>合言葉</h3><div class="vl-field"><label>このボードを開く合言葉</label><input type="text" id="bBpass"></div><div class="vl-mbtns"><button class="ok" onclick="bBoardLogin()">開く</button></div>'); setTimeout(()=>{const el=document.getElementById('bBpass');if(el)el.focus();},50); }
 function bBoardLogin(){bBoardPass=document.getElementById('bBpass').value; safeLSset('baske_board_pass',bBoardPass); closeModal();bLoadList();}
 
+/* ===== メンバー名簿（A/B・背番号）＋ 出欠 ＋ スコア（GAS共有） ===== */
+const ROSTER_SEED = [
+  {id:'r2_01', name:'初山 舞雛', grade:2, num:'', team:''},
+  {id:'r2_02', name:'加治 妃望', grade:2, num:'', team:''},
+  {id:'r2_03', name:'和山 りり', grade:2, num:'', team:''},
+  {id:'r2_04', name:'大澤 穂乃', grade:2, num:'', team:''},
+  {id:'r2_05', name:'山内 莉桜', grade:2, num:'', team:''},
+  {id:'r2_06', name:'木村 羽星', grade:2, num:'', team:''},
+  {id:'r2_07', name:'篠田 玲依愛', grade:2, num:'', team:''},
+  {id:'r2_08', name:'細川 芽', grade:2, num:'', team:''},
+  {id:'r2_09', name:'鈴木 琴美', grade:2, num:'', team:''},
+  {id:'r2_10', name:'高橋 佳奈', grade:2, num:'', team:''},
+  {id:'r2_11', name:'高橋 禾子', grade:2, num:'', team:''},
+  {id:'r1_01', name:'三木 真綾', grade:1, num:'', team:''},
+  {id:'r1_02', name:'亀井 愛琉', grade:1, num:'', team:''},
+  {id:'r1_03', name:'伊勢田 優紀', grade:1, num:'', team:''},
+  {id:'r1_04', name:'八重澤 來々', grade:1, num:'', team:''},
+  {id:'r1_05', name:'北上 理璃南', grade:1, num:'', team:''},
+  {id:'r1_06', name:'塚瀬 楓愛', grade:1, num:'', team:''},
+  {id:'r1_07', name:'手塚 七海', grade:1, num:'', team:''},
+  {id:'r1_08', name:'柴田 小春', grade:1, num:'', team:''},
+  {id:'r1_09', name:'横山 沙幸', grade:1, num:'', team:''},
+  {id:'r1_10', name:'渡辺 稟花', grade:1, num:'', team:''},
+  {id:'r1_11', name:'谷口 莉緒', grade:1, num:'', team:''},
+  {id:'r1_12', name:'飯田 詩乃', grade:1, num:'', team:''},
+  {id:'r1_13', name:'高野 晶', grade:1, num:'', team:''}
+];
+let roster=null;
+async function loadRoster(){
+  try{ const s=await bDataGet('roster'); roster = s?JSON.parse(s):vclone(ROSTER_SEED); if(!Array.isArray(roster)||!roster.length) roster=vclone(ROSTER_SEED); }
+  catch(e){ roster=vclone(ROSTER_SEED); }
+}
+function persistRoster(){ bDataSave('roster', JSON.stringify(roster)); }
+function renderRoster(){
+  const area=document.getElementById('rosterArea');
+  if(!roster){ area.innerHTML='<div class="b-empty">読み込み中…</div>'; return; }
+  const coach=!!bCoachPass;
+  const groups=[['A','Aチーム'],['B','Bチーム'],['','未分類']];
+  let html='';
+  groups.forEach(g=>{
+    const key=g[0], label=g[1];
+    const list=roster.filter(p=>(p.team||'')===key);
+    html+='<fieldset class="fs"><legend>'+label+'（'+list.length+'名）</legend>';
+    if(!list.length) html+='<span class="label">なし</span>';
+    list.forEach(p=>{
+      const idx=roster.indexOf(p);
+      html+='<div class="vl-row"><span class="vl-main"><span class="ic">'+esc(p.num||'?')+'</span><span class="lab">'+esc(p.name)+' <span class="tag">'+esc(String(p.grade))+'年</span></span></span>';
+      if(coach){
+        html+='<span class="vl-act">';
+        if(key!=='A') html+='<button title="Aへ移動" onclick="rMove('+idx+',\'A\')">A</button>';
+        if(key!=='B') html+='<button title="Bへ移動" onclick="rMove('+idx+',\'B\')">B</button>';
+        if(key!=='') html+='<button title="未分類へ" onclick="rMove('+idx+',\'\')">−</button>';
+        html+='<button title="編集" onclick="rEdit('+idx+')">✎</button>';
+        html+='<button class="del" title="削除" onclick="rDel('+idx+')">✕</button>';
+        html+='</span>';
+      }
+      html+='</div>';
+    });
+    html+='</fieldset>';
+  });
+  if(coach) html+='<div class="vl-addrow"><button class="vl-addbtn" onclick="rAdd()">＋ 選手を追加</button></div>';
+  else html+='<div class="b-hint">A/Bの振り分け・背番号の編集は、チームタブで「コーチ」をONにすると行えます。</div>';
+  area.innerHTML=html;
+}
+function rMove(idx,team){ roster[idx].team=team; persistRoster(); renderRoster(); }
+function rEdit(idx){
+  const p=roster[idx];
+  vlFormModal('選手を編集',[
+    {key:'name',label:'名前（フルネーム）',value:p.name},
+    {key:'num',label:'背番号',value:p.num||''},
+    {key:'grade',label:'学年（1か2）',value:String(p.grade||'')}
+  ],r=>{ if(r.name.trim())p.name=r.name.trim(); p.num=(r.num||'').trim(); p.grade=parseInt(r.grade,10)||p.grade; persistRoster(); vlCloseModal(); renderRoster(); });
+}
+function rAdd(){
+  vlFormModal('選手を追加',[
+    {key:'name',label:'名前（フルネーム）',value:''},
+    {key:'num',label:'背番号',value:''},
+    {key:'grade',label:'学年（1か2）',value:'1'}
+  ],r=>{ if(!r.name.trim())return; roster.push({id:'r_'+Date.now(), name:r.name.trim(), num:(r.num||'').trim(), grade:parseInt(r.grade,10)||1, team:''}); persistRoster(); vlCloseModal(); renderRoster(); });
+}
+function rDel(idx){ const p=roster[idx]; vlConfirm('選手を削除','「'+p.name+'」を削除しますか？',()=>{ roster.splice(idx,1); persistRoster(); vlCloseModal(); renderRoster(); }); }
+
+/* ---- 出欠（試合連動・本人入力・出席/欠席） ---- */
+let attendance=null, attCurGame=null, attCurRec=null;
+async function loadAttendance(){
+  try{ const s=await bDataGet('attendance'); attendance = s?JSON.parse(s):{}; if(typeof attendance!=='object'||!attendance) attendance={}; }
+  catch(e){ attendance={}; }
+}
+function persistAttendance(){ bDataSave('attendance', JSON.stringify(attendance)); }
+function attTargetPlayers(){
+  if(!roster) return [];
+  if(attCurRec && attCurRec.target==='AB') return roster.filter(p=>p.team==='A'||p.team==='B');
+  return roster.filter(p=>p.team==='A');
+}
+async function openAtt(gameId){
+  attCurGame=String(gameId);
+  showModal('<h3>出欠</h3><div class="b-empty">読み込み中…</div>');
+  await loadRoster(); await loadAttendance();
+  attCurRec = attendance[attCurGame] || {target:'A', marks:{}};
+  if(!attCurRec.marks) attCurRec.marks={};
+  renderAttModal();
+}
+function renderAttModal(){
+  const g=currentSchedules.find(s=>String(s.id)===attCurGame);
+  const coach=!!bCoachPass;
+  const players=attTargetPlayers();
+  let html='<h3>出欠　'+esc(g?formatSchedDate(g.date):'')+'</h3>';
+  html+='<div class="b-field"><label>対象チーム'+(coach?'':'（変更はコーチ）')+'</label><div class="b-vseg">'+
+    '<button class="'+(attCurRec.target!=='AB'?'active':'')+'" onclick="attSetTarget(\'A\')">Aのみ</button>'+
+    '<button class="'+(attCurRec.target==='AB'?'active':'')+'" onclick="attSetTarget(\'AB\')">A・B両方</button></div></div>';
+  if(!players.length){ html+='<div class="b-empty">対象選手がいません。「メンバー」でA/Bを振り分けてください。</div>'; }
+  players.forEach(p=>{
+    const st=attCurRec.marks[p.id]||'';
+    html+='<div class="vl-row"><span class="vl-main"><span class="lab">'+esc(p.name)+(p.num?' <span class="tag">#'+esc(p.num)+'</span>':'')+'</span></span><span class="vl-act">'+
+      '<button class="'+(st==='present'?'kf-done':'')+'" onclick="attMark(\''+p.id+'\',\'present\')">出席</button>'+
+      '<button class="'+(st==='absent'?'rec':'')+'" onclick="attMark(\''+p.id+'\',\'absent\')">欠席</button></span></div>';
+  });
+  const present=players.filter(p=>attCurRec.marks[p.id]==='present').length;
+  const absent=players.filter(p=>attCurRec.marks[p.id]==='absent').length;
+  html+='<div class="b-hint">出席 '+present+'／欠席 '+absent+'／未回答 '+(players.length-present-absent)+'（対象'+players.length+'名）</div>';
+  html+='<div class="vl-mbtns"><button class="ng" onclick="openAtt(attCurGame)">↻ 最新に更新</button><button class="ok" onclick="closeModal()">閉じる</button></div>';
+  document.getElementById('vlModal').innerHTML=html;
+}
+function attSetTarget(t){ if(!bCoachPass){ toast('対象の変更はコーチのみ'); return; } attCurRec.target=t; attendance[attCurGame]=attCurRec; persistAttendance(); renderAttModal(); }
+async function attMark(pid,st){
+  attCurRec.marks[pid]=st; renderAttModal();
+  try{
+    const s=await bDataGet('attendance'); const latest=s?JSON.parse(s):{};
+    const rec=latest[attCurGame]||{target:attCurRec.target,marks:{}}; if(!rec.marks)rec.marks={};
+    rec.marks[pid]=st; rec.target=attCurRec.target||rec.target||'A';
+    latest[attCurGame]=rec; bDataSave('attendance', JSON.stringify(latest));
+    attendance=latest; attCurRec=rec;
+  }catch(e){ attendance[attCurGame]=attCurRec; bDataSave('attendance', JSON.stringify(attendance)); }
+}
+
+/* ---- スコア（独立タブ・日程と無関係に残る／背番号表示） ---- */
+let scores=null, scCur=null;
+async function loadScores(){
+  try{ const s=await bDataGet('scores'); scores = s?JSON.parse(s):[]; if(!Array.isArray(scores)) scores=[]; }
+  catch(e){ scores=[]; }
+}
+function persistScores(){ bDataSave('scores', JSON.stringify(scores)); }
+function scEntryTotal(e){ let t=0; (e.rows||[]).forEach(r=>t+=(parseInt(r.pts,10)||0)); return t; }
+function renderScoreList(){
+  const area=document.getElementById('scoreArea');
+  if(!scores){ area.innerHTML='<div class="b-empty">読み込み中…</div>'; return; }
+  const coach=!!bCoachPass;
+  let html='';
+  if(coach) html+='<div class="vl-addrow" style="margin-top:0;margin-bottom:12px"><button class="vl-addbtn" onclick="scAddGame()">＋ 試合スコアを追加</button></div>';
+  if(!scores.length){ html+='<div class="b-empty">まだスコアがありません。'+(coach?'「＋ 試合スコアを追加」から記録できます。':'コーチが記録すると表示されます。')+'</div>'; area.innerHTML=html; return; }
+  const list=scores.slice().sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  list.forEach(e=>{
+    const total=scEntryTotal(e), opp=parseInt(e.opp,10)||0;
+    const mark = total>opp?'〇 勝':(total<opp?'● 負':'△ 分');
+    html+='<div class="b-card"><div class="s-tag match">'+mark+'　'+(e.target==='AB'?'A・B':'A')+'</div>'+
+      '<div class="s-date">'+esc(formatSchedDate(e.date))+'　vs '+esc(e.opponent||'')+'</div>'+
+      '<div class="s-date" style="font-size:22px">自 '+total+' － '+opp+' 相手</div>'+
+      '<div class="b-cact"><button onclick="openScoreEntry(\''+e.id+'\')">'+(coach?'得点を入力／見る':'詳細を見る')+'</button>'+
+      (coach?'<button class="del" onclick="scDel(\''+e.id+'\')">削除</button>':'')+'</div></div>';
+  });
+  area.innerHTML=html;
+}
+async function scAddGame(){
+  await loadRoster();
+  vlFormModal('試合スコアを追加',[
+    {key:'date',label:'日付（例：2026-07-10）',value:''},
+    {key:'opponent',label:'対戦相手',value:''},
+    {key:'target',label:'対象（A または AB）',value:'A'}
+  ],r=>{
+    const target=(r.target||'').toUpperCase()==='AB'?'AB':'A';
+    const players = target==='AB' ? roster.filter(p=>p.team==='A'||p.team==='B') : roster.filter(p=>p.team==='A');
+    const rows = players.slice().sort((a,b)=>(parseInt(a.num,10)||999)-(parseInt(b.num,10)||999)).map(p=>({id:p.id,name:p.name,num:p.num||'',pts:0}));
+    const entry={id:'sc_'+Date.now(), date:(r.date||'').trim(), opponent:(r.opponent||'').trim(), target, rows, opp:''};
+    scores.push(entry); persistScores(); vlCloseModal(); renderScoreList(); openScoreEntry(entry.id);
+  });
+}
+function scDel(id){ vlConfirm('スコアを削除','このスコアを削除しますか？',()=>{ scores=scores.filter(e=>e.id!==id); persistScores(); vlCloseModal(); renderScoreList(); }); }
+function scLiveTotal(){ if(!scCur)return 0; let t=0; (scCur.rows||[]).forEach(r=>t+=(parseInt(r.pts,10)||0)); return t; }
+function scUpdateTotal(){ const el=document.getElementById('scTotal'); if(el&&scCur) el.textContent='自 '+scLiveTotal()+' － '+(parseInt(scCur.opp,10)||0)+' 相手'; }
+function openScoreEntry(id){
+  scCur = scores.find(e=>e.id===id); if(!scCur)return;
+  const coach=!!bCoachPass;
+  let html='<h3>スコア　'+esc(formatSchedDate(scCur.date))+'　vs '+esc(scCur.opponent||'')+'</h3>';
+  html+='<div class="b-hint">自チーム選手の得点（背番号順）'+(coach?'':'／入力はコーチのみ')+'</div>';
+  if(!scCur.rows||!scCur.rows.length){ html+='<div class="b-empty">対象選手がいません（メンバーでA/Bを振り分けてから追加してください）。</div>'; }
+  (scCur.rows||[]).forEach((r,i)=>{
+    html+='<div class="vl-row"><span class="vl-main"><span class="ic">'+esc(r.num||'?')+'</span>'+(coach?'<span class="lab">'+esc(r.name)+'</span>':'')+'</span><span class="vl-act">'+
+      (coach?'<input type="text" inputmode="numeric" style="width:64px;text-align:center;padding:7px" value="'+esc(String(r.pts||''))+'" onchange="scSetRow('+i+',this.value)">':'<span class="lab" style="font-weight:700">'+esc(String(r.pts||0))+'</span>')+'</span></div>';
+  });
+  html+='<div class="b-field" style="margin-top:10px"><label>相手チーム得点（任意）</label>'+
+    (coach?'<input type="text" inputmode="numeric" value="'+esc(String(scCur.opp||''))+'" onchange="scSetOpp(this.value)">':'<div class="lab" style="font-weight:700">'+esc(String(scCur.opp||0))+'</div>')+'</div>';
+  html+='<div class="s-date" style="text-align:center;margin-top:10px" id="scTotal">自 '+scLiveTotal()+' － '+(parseInt(scCur.opp,10)||0)+' 相手</div>';
+  html+='<div class="vl-mbtns"><button class="ok" onclick="closeModal();renderScoreList()">閉じる</button></div>';
+  showModal(html);
+}
+function scSetRow(i,v){ if(!bCoachPass||!scCur)return; scCur.rows[i].pts=parseInt(v,10)||0; persistScores(); scUpdateTotal(); }
+function scSetOpp(v){ if(!bCoachPass||!scCur)return; scCur.opp=parseInt(v,10)||0; persistScores(); scUpdateTotal(); }
+
 let currentSchedules=[];
 
-(async function init(){
-  await loadMyPlays(); renderMyPlays();
-  await loadPlayerPlays(); renderPlayerPlays();
+(function init(){
+  // コートはGASと無関係なので即描画（待たせない）
   buildPlayButtons();
   layout(); resetPositions(); draw();
-  await loadVlib(); renderVlib();
+  renderMyPlays(); renderPlayerPlays();
+  // チーム共有データは裏で並行読込し、届いたら差し込む
+  loadMyPlays().then(renderMyPlays);
+  loadPlayerPlays().then(renderPlayerPlays);
 })();
 document.getElementById('vlOverlay').addEventListener('click',e=>{if(e.target.id==='vlOverlay')closeModal();}); document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 if(!bConfigured()){ document.getElementById('bSetupNotice').style.display=''; document.getElementById('bListArea').innerHTML=''; }
