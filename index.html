@@ -315,7 +315,9 @@ function formatSchedTime(val) {
 }
 
 /* ===== GAS共有ストレージ（作戦盤・動画・ランを全端末で共有） ===== */
-async function bDataGet(key){
+// スプレッドシートの1セルは50,000文字まで。超える値は複数キーに分割して保存する
+const BDATA_CHUNK = 45000;
+async function bDataGetRaw(key){
   try{
     const url = BBS_API + '?' + new URLSearchParams({action:'data_get', key:key}).toString();
     const r = await fetch(url, {method:'GET'});
@@ -323,11 +325,36 @@ async function bDataGet(key){
     return (j && j.ok) ? (j.value||'') : '';
   }catch(e){ return ''; }
 }
-function bDataSave(key, value){
+async function bDataGet(key){
+  const v = await bDataGetRaw(key);
+  if(v && v.indexOf('#CHUNKED:')===0){
+    const n = parseInt(v.slice(9),10);
+    if(!n || n>200) return '';
+    const parts = await Promise.all(Array.from({length:n},(_,i)=>bDataGetRaw(key+'#'+i)));
+    return parts.join('');
+  }
+  return v;
+}
+async function bDataPostRaw(key, value){
   try{
     // 大きいデータも送れるようにPOST（text/plainでCORSプリフライト回避）
-    fetch(BBS_API, {method:'POST', body: JSON.stringify({action:'data_save', key:key, value:value})});
-  }catch(e){}
+    const r = await fetch(BBS_API, {method:'POST', body: JSON.stringify({action:'data_save', key:key, value:value})});
+    const j = await r.json();
+    return !!(j && j.ok);
+  }catch(e){ return false; }
+}
+async function bDataSave(key, value){
+  let ok;
+  if(value.length > BDATA_CHUNK){
+    const n = Math.ceil(value.length / BDATA_CHUNK);
+    ok = true;
+    for(let i=0;i<n && ok;i++) ok = await bDataPostRaw(key+'#'+i, value.substr(i*BDATA_CHUNK, BDATA_CHUNK));
+    if(ok) ok = await bDataPostRaw(key, '#CHUNKED:'+n);
+  }else{
+    ok = await bDataPostRaw(key, value);
+  }
+  if(!ok && typeof toast==='function') toast('⚠️ サーバー保存に失敗しました。電波の良い場所でもう一度お試しください');
+  return ok;
 }
 </script>
 
@@ -1183,8 +1210,22 @@ async function loadMyPlays(){
   try{ const s=await bDataGet(MYKEY); myPlays = s?JSON.parse(s):[]; if(!Array.isArray(myPlays))myPlays=[]; }
   catch(e){ myPlays=[]; }
 }
+const rnd3=v=>Math.round(v*1000)/1000;
+function packPlay(p){
+  // actions+startがあれば再生時にbuildFromActionsで復元されるため、巨大なpaths/ballPathは保存しない
+  const q=Object.assign({},p);
+  if(q.actions && q.actions.length && q.start){
+    q.paths=[]; q.ballPath=[];
+    q.actions=q.actions.map(a=>Object.assign({},a,{pts:a.pts.map(pt=>[rnd3(pt[0]),rnd3(pt[1])])}));
+    q.start={pos:q.start.pos.map(pt=>[rnd3(pt[0]),rnd3(pt[1])]), ball:[rnd3(q.start.ball[0]),rnd3(q.start.ball[1])]};
+  }else{
+    q.paths=(q.paths||[]).map(seg=>seg.map(pt=>[rnd3(pt[0]),rnd3(pt[1])]));
+    q.ballPath=(q.ballPath||[]).map(pt=>[rnd3(pt[0]),rnd3(pt[1])]);
+  }
+  return q;
+}
 function persistMyPlays(){
-  bDataSave(MYKEY, JSON.stringify(myPlays));
+  return bDataSave(MYKEY, JSON.stringify(myPlays.map(packPlay)));
 }
 
 function renderMyPlays(){
@@ -1213,10 +1254,15 @@ function saveCurrentPlay(){
   myPlays.push({ name, court:lastRecording.court,
     paths:lastRecording.paths, ballPath:lastRecording.ballPath,
     actions:lastRecording.actions||null, start:lastRecording.start||null });
-  persistMyPlays(); renderMyPlays();
+  renderMyPlays();
   inp.value=''; document.getElementById('saveBox').style.display='none';
   lastRecording=null;
-  document.getElementById('status').textContent='「'+name+'」をマイプレーに保存しました（全員に共有）。';
+  document.getElementById('status').textContent='「'+name+'」を保存しています…';
+  persistMyPlays().then(ok=>{
+    document.getElementById('status').textContent = ok
+      ? '「'+name+'」をマイプレーに保存しました（全員に共有）。'
+      : '⚠️「'+name+'」のサーバー保存に失敗しました。電波の良い場所でもう一度保存してください。';
+  });
 }
 
 function loadMyPlay(idx,btn){
@@ -1817,7 +1863,7 @@ async function loadPlayerPlays(){
   catch(e){playerPlays=[];}
 }
 function persistPlayerPlays(){
-  bDataSave(PLAYER_PLAYS_KEY, JSON.stringify(playerPlays));
+  return bDataSave(PLAYER_PLAYS_KEY, JSON.stringify(playerPlays.map(packPlay)));
 }
 function savePlayerPlay(){
   const name=(document.getElementById('playNameP').value||'').trim();
