@@ -199,6 +199,9 @@ canvas{display:block;border-radius:var(--radius);touch-action:none;box-shadow:va
 .vl-act button{width:32px;height:32px;border-radius:9px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;padding:0}
 .vl-act button:hover{color:var(--text);border-color:var(--accent)}
 .vl-act button.del:hover{color:var(--del-fg);border-color:var(--del-line)}
+.sc-stat{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--muted)}
+.sc-stat input{width:42px;text-align:center;padding:6px 2px;font-size:13px}
+.sc-statval{font-weight:700;color:var(--text);font-size:13px}
 .vl-addrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px;width:100%}
 .vl-addbtn{font-size:12px;padding:9px 15px;border-radius:10px;border:1px dashed var(--dash);background:transparent;color:var(--muted);cursor:pointer}
 .vl-addbtn:hover{color:var(--accent-strong);border-color:var(--accent);background:var(--accent-tint)}
@@ -2201,6 +2204,26 @@ function pmPlayMove(idx){
 function safeLSget(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
 function safeLSset(k,v){ try{ localStorage.setItem(k,v); }catch(e){} }
 let bTab='list',bVisMode='public',bCoachPass=null,bBoardPass=safeLSget('baske_board_pass')||null;
+let boardGateActive=false;
+function bBoardGate(){
+  boardGateActive=true;
+  showModal('<h3>合言葉</h3><p class="b-hint" style="margin-bottom:14px">はじめに、このチームの合言葉を入力してください。予定・作戦盤・動画・名簿・スコアなど、すべてこのボードを使うために必要です。</p><div class="vl-field"><label>合言葉</label><input type="text" id="bBpass"></div><div class="vl-mbtns"><button class="ok" onclick="bBoardGateSubmit()">入る</button></div>');
+  setTimeout(()=>{const el=document.getElementById('bBpass');if(el)el.focus();},50);
+}
+async function bBoardGateSubmit(){
+  const v=(document.getElementById('bBpass').value||'').trim();
+  if(!v){toast('合言葉を入力してください');return;}
+  const btn=document.querySelector('#vlModal button.ok');
+  if(btn){btn.disabled=true;btn.textContent='確認中…';}
+  let res;
+  try{ res=await bApi({action:'list', board:v}); }
+  catch(e){ if(btn){btn.disabled=false;btn.textContent='入る';} toast('通信エラーが発生しました。時間をおいてもう一度お試しください'); return; }
+  if(btn){btn.disabled=false;btn.textContent='入る';}
+  if(res && res.err==='board'){ toast('合言葉が違います'); return; }
+  bBoardPass=v; safeLSset('baske_board_pass', bBoardPass);
+  boardGateActive=false; closeModal();
+  bLoadList();
+}
 
 async function bApi(params){const url=BBS_API+'?'+new URLSearchParams(params).toString();const r=await fetch(url,{method:'GET'});return await r.json();}
 function bConfigured(){return BBS_API&&BBS_API.indexOf('http')===0;}
@@ -2569,7 +2592,7 @@ async function scAddGame(){
   await loadRoster();
   let html='<h3>試合スコアを追加</h3>'+
     '<div class="vl-field"><label>日付</label><input type="date" id="scfDate"></div>'+
-    '<div class="vl-field"><label>対戦相手</label><input type="text" id="scfOpp" placeholder="例：松が谷高校"></div>'+
+    '<div class="vl-field"><label>対戦相手</label><input type="text" id="scfOpp" placeholder="例：〇〇中学校"></div>'+
     '<div class="vl-field"><label>対象チーム</label><select id="scfTarget"><option value="A">Aチームのみ</option><option value="B">Bチームのみ</option><option value="AB">A・B両方</option></select></div>'+
     '<div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button><button class="ok" onclick="scDoAdd()">保存</button></div>';
   showModal(html);
@@ -2580,22 +2603,39 @@ function scDoAdd(){
   const oppName=(document.getElementById('scfOpp').value||'').trim();
   const target=document.getElementById('scfTarget').value;
   const players=scPlayersByTarget(target);
-  const rows = players.slice().sort((a,b)=>(parseInt(a.num,10)||999)-(parseInt(b.num,10)||999)).map(p=>({id:p.id,name:p.name,num:p.num||'',pts:0}));
+  const rows = players.slice().sort((a,b)=>(parseInt(a.num,10)||999)-(parseInt(b.num,10)||999)).map(p=>({id:p.id,name:p.name,num:p.num||'',pts:0,ast:0,reb:0,stl:0}));
   const entry={id:'sc_'+Date.now(), date, opponent:oppName, target, rows, opp:''};
   scores.push(entry); persistScores(); closeModal(); renderScoreList(); openScoreEntry(entry.id);
 }
 function scDel(id){ vlConfirm('スコアを削除','このスコアを削除しますか？',()=>{ scores=scores.filter(e=>e.id!==id); persistScores(); vlCloseModal(); renderScoreList(); }); }
 function scLiveTotal(){ if(!scCur)return 0; let t=0; (scCur.rows||[]).forEach(r=>t+=(parseInt(r.pts,10)||0)); return t; }
 function scUpdateTotal(){ const el=document.getElementById('scTotal'); if(el&&scCur) el.textContent='自 '+scLiveTotal()+' － '+(parseInt(scCur.opp,10)||0)+' 相手'; }
+function scStatField(r,i,field,label,coach){
+  const val=r[field]||0;
+  return coach
+    ? '<label class="sc-stat"><span>'+label+'</span><input type="text" inputmode="numeric" value="'+esc(String(val))+'" onchange="scSetStat('+i+',\''+field+'\',this.value)"></label>'
+    : '<label class="sc-stat"><span>'+label+'</span><span class="sc-statval">'+esc(String(val))+'</span></label>';
+}
 function openScoreEntry(id){
   scCur = scores.find(e=>e.id===id); if(!scCur)return;
   const coach=!!bCoachPass;
   let html='<h3>スコア　'+esc(formatSchedDate(scCur.date))+'　vs '+esc(scCur.opponent||'')+'</h3>';
-  html+='<div class="b-hint">自チーム選手の得点（背番号順）'+(coach?'':'／入力はコーチのみ')+'</div>';
+  html+='<div class="b-hint">自チーム選手の得点・アシスト・リバウンド・スティール（背番号順）'+(coach?'':'／入力はコーチのみ')+'</div>';
+  if(coach){
+    html+='<div class="vl-addrow" style="margin-top:0;margin-bottom:9px">'+
+      '<button class="vl-addbtn" onclick="scPasteImport()">📥 動画分析から貼り付けて取り込み</button>'+
+      '<button class="vl-addbtn" onclick="document.getElementById(\'scCsvFile\').click()">📄 CSVファイルから取り込み</button></div>'+
+      '<input type="file" id="scCsvFile" accept=".csv,text/csv" style="display:none" onchange="scCsvFileChosen(this)">'+
+      '<div class="b-hint" style="margin-top:0">'+
+      '<a href="https://lsp-ima.github.io/basket-video-analysis/" target="_blank" rel="noopener">動画分析アプリ</a>'+
+      'の「スタッツ記録」で記録し「スコアにコピー」した内容を貼り付けるか、CSV保存したファイルを取り込むと、背番号が一致する選手に得点・AST・REB・STLが自動反映されます。</div>';
+  }
   if(!scCur.rows||!scCur.rows.length){ html+='<div class="b-empty">対象選手がいません（メンバーでA/Bを振り分けてから追加してください）。</div>'; }
   (scCur.rows||[]).forEach((r,i)=>{
-    html+='<div class="vl-row"><span class="vl-main"><span class="ic">'+esc(r.num||'?')+'</span><span class="lab">'+esc(r.name)+'</span></span><span class="vl-act">'+
-      (coach?'<input type="text" inputmode="numeric" style="width:64px;text-align:center;padding:7px" value="'+esc(String(r.pts||''))+'" onchange="scSetRow('+i+',this.value)">':'<span class="lab" style="font-weight:700">'+esc(String(r.pts||0))+'</span>')+'</span></div>';
+    html+='<div class="vl-row" style="flex-wrap:wrap"><span class="vl-main" style="flex:1 1 130px"><span class="ic">'+esc(r.num||'?')+'</span><span class="lab">'+esc(r.name)+'</span></span>'+
+      '<span class="vl-act" style="flex-wrap:wrap;gap:8px 12px">'+
+      scStatField(r,i,'pts','得点',coach)+scStatField(r,i,'ast','AST',coach)+scStatField(r,i,'reb','REB',coach)+scStatField(r,i,'stl','STL',coach)+
+      '</span></div>';
   });
   html+='<div class="b-field" style="margin-top:10px"><label>相手チーム得点（任意）</label>'+
     (coach?'<input type="text" inputmode="numeric" value="'+esc(String(scCur.opp||''))+'" onchange="scSetOpp(this.value)">':'<div class="lab" style="font-weight:700">'+esc(String(scCur.opp||0))+'</div>')+'</div>';
@@ -2603,8 +2643,56 @@ function openScoreEntry(id){
   html+='<div class="vl-mbtns"><button class="ok" onclick="closeModal();renderScoreList()">閉じる</button></div>';
   showModal(html);
 }
-function scSetRow(i,v){ if(!bCoachPass||!scCur)return; scCur.rows[i].pts=parseInt(v,10)||0; persistScores(); scUpdateTotal(); }
+function scSetStat(i,field,v){ if(!bCoachPass||!scCur)return; scCur.rows[i][field]=parseInt(v,10)||0; persistScores(); scUpdateTotal(); }
 function scSetOpp(v){ if(!bCoachPass||!scCur)return; scCur.opp=parseInt(v,10)||0; persistScores(); scUpdateTotal(); }
+function scCsvFileChosen(input){
+  const f=input.files&&input.files[0]; if(!f) return;
+  const reader=new FileReader();
+  reader.onload=()=>{ scImportCsv(String(reader.result||'')); input.value=''; };
+  reader.onerror=()=>{ toast('CSVの読み込みに失敗しました'); };
+  reader.readAsText(f,'utf-8');
+}
+async function scPasteImport(){
+  if(!bCoachPass||!scCur) return;
+  try{
+    if(navigator.clipboard && navigator.clipboard.readText){
+      const t=await navigator.clipboard.readText();
+      if(t && /,/.test(t)){ scImportCsv(t); return; }
+    }
+  }catch(e){}
+  showModal('<h3>貼り付けて取り込み</h3><div class="b-hint">動画分析アプリで「スコアにコピー」した内容を、下の枠に貼り付けてください（枠を長押し→ペースト）。</div><div class="b-field"><textarea id="scPasteBox" style="min-height:120px" placeholder="ここに貼り付け"></textarea></div><div class="vl-mbtns"><button class="ng" onclick="openScoreEntry(scCur.id)">キャンセル</button><button class="ok" onclick="scPasteDo()">取り込む</button></div>');
+  setTimeout(()=>{const el=document.getElementById('scPasteBox');if(el)el.focus();},50);
+}
+function scPasteDo(){
+  const el=document.getElementById('scPasteBox'); if(!el) return;
+  const t=el.value||''; if(!t.trim()){ toast('内容が空です'); return; }
+  scImportCsv(t);
+}
+function scImportCsv(text){
+  if(!bCoachPass||!scCur) return;
+  text=text.replace(/^\uFEFF/,'');
+  const lines=text.split(/\r\n|\n/).filter(l=>l.trim().length);
+  if(lines.length<2){ toast('CSVを読み取れませんでした'); return; }
+  const map={}; let firstTeam=null;
+  for(let i=1;i<lines.length;i++){
+    const cols=lines[i].split(',');
+    const teamName=(cols[0]||'').trim();
+    const who=(cols[1]||'').trim();
+    const m=/^#(\d+)$/.exec(who);
+    if(!m) continue;
+    if(firstTeam===null) firstTeam=teamName;
+    if(teamName!==firstTeam) continue; // 相手チームの行は取り込まない（自チーム＝最初のチームのみ）
+    map[m[1]]={pts:parseInt(cols[2],10)||0, reb:parseInt(cols[3],10)||0, ast:parseInt(cols[4],10)||0, stl:parseInt(cols[5],10)||0};
+  }
+  let matched=0;
+  (scCur.rows||[]).forEach(r=>{
+    const s=map[String(r.num)];
+    if(s){ r.pts=s.pts; r.ast=s.ast; r.reb=s.reb; r.stl=s.stl; matched++; }
+  });
+  persistScores();
+  openScoreEntry(scCur.id);
+  toast(matched?matched+'人分のスタッツを読み込みました':'背番号が一致する選手が見つかりませんでした');
+}
 
 let currentSchedules=[];
 
@@ -2618,7 +2706,15 @@ let currentSchedules=[];
   loadPlayerPlays().then(renderPlayerPlays);
 })();
 let _rszT; window.addEventListener('resize', ()=>{ clearTimeout(_rszT); _rszT=setTimeout(()=>{ try{ layout(); draw(); }catch(e){} }, 160); });
-document.getElementById('vlOverlay').addEventListener('click',e=>{if(e.target.id==='vlOverlay')closeModal();}); document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+if(bBoardPass){
+  bApi({action:'list', board:bBoardPass}).then(res=>{
+    if(res && res.err==='board'){ bBoardPass=null; safeLSset('baske_board_pass',''); bBoardGate(); return; }
+    bLoadList();
+  }).catch(()=>{ bLoadList(); });
+}else{
+  bBoardGate();
+}
+document.getElementById('vlOverlay').addEventListener('click',e=>{if(e.target.id==='vlOverlay' && !boardGateActive)closeModal();}); document.addEventListener('keydown',e=>{if(e.key==='Escape' && !boardGateActive)closeModal();});
 if(!bConfigured()){ document.getElementById('bSetupNotice').style.display=''; document.getElementById('bListArea').innerHTML=''; }
 </script>
 </body>
