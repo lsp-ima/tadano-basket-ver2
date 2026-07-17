@@ -2412,6 +2412,7 @@ async function bBoardGateSubmit(){
   if(btn){btn.disabled=false;btn.textContent='入る';}
   if(res && res.err==='board'){ toast('合言葉が違います'); return; }
   bBoardPass=v; safeLSset('baske_board_pass', bBoardPass);
+  faceStamp();
   boardGateActive=false; const _cover=document.getElementById('boardCover'); if(_cover) _cover.classList.remove('show');
   bLoadList();
   playDunk(offerPasskey);
@@ -2474,6 +2475,10 @@ function dunkImpact(ov,flash,shout){
   }
 }
 function faceKeyId(){ return safeLSget('baske_face_id')||''; }
+const FACE_AUTH_TTL=2*60*60*1000;
+function faceStamp(){ safeLSset('baske_auth_at', String(Date.now())); }
+function faceAuthFresh(){ const t=Number(safeLSget('baske_auth_at'))||0; return (Date.now()-t)<FACE_AUTH_TTL; }
+function faceLockNeeded(){ return !!(bBoardPass && faceKeyId() && window.PublicKeyCredential && window.isSecureContext); }
 function bufToB64(b){ const a=new Uint8Array(b); let s=''; for(let i=0;i<a.length;i++)s+=String.fromCharCode(a[i]); return btoa(s); }
 function b64ToBuf(s){ const bin=atob(s); const a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i); return a.buffer; }
 function faceRnd(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return a; }
@@ -2509,6 +2514,7 @@ async function faceLogin(){
       timeout:60000
     }});
   }catch(e){ toast('顔認証できませんでした。合言葉でも開けます'); return; }
+  faceStamp();
   document.getElementById('faceLock').style.display='none';
   bLoadList();
   playDunk(null);
@@ -3003,7 +3009,13 @@ let currentSchedules=[];
   loadPlayerPlays().then(renderPlayerPlays);
 })();
 let _rszT; window.addEventListener('resize', ()=>{ clearTimeout(_rszT); _rszT=setTimeout(()=>{ try{ layout(); draw(); }catch(e){} }, 160); });
-if(bBoardPass && faceKeyId() && window.PublicKeyCredential && window.isSecureContext){
+// URLに ?reset=1 を付けて開くと、この端末の記憶（合言葉・顔認証）を消して最初からやり直せる（動作確認用）
+if(location.search.indexOf('reset=1')>=0){
+  safeLSset('baske_board_pass',''); safeLSset('baske_face_id',''); safeLSset('baske_face_no','');
+  bBoardPass=null;
+  try{ history.replaceState(null,'',location.pathname); }catch(e){}
+}
+if(faceLockNeeded() && !faceAuthFresh()){
   showFaceLock();
 }else if(bBoardPass){
   bApi({action:'list', board:bBoardPass}).then(res=>{
@@ -3013,6 +3025,12 @@ if(bBoardPass && faceKeyId() && window.PublicKeyCredential && window.isSecureCon
 }else{
   bBoardGate();
 }
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible' && faceLockNeeded() && !faceAuthFresh() && !dunkBusy
+     && document.getElementById('faceLock').style.display!=='flex'){
+    showFaceLock();
+  }
+});
 document.getElementById('vlOverlay').addEventListener('click',e=>{if(e.target.id==='vlOverlay' && !boardGateActive)closeModal();}); document.addEventListener('keydown',e=>{if(e.key==='Escape' && !boardGateActive)closeModal();});
 if(!bConfigured()){ document.getElementById('bSetupNotice').style.display=''; document.getElementById('bListArea').innerHTML=''; }
 </script>
