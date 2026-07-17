@@ -347,6 +347,65 @@ canvas{display:block;border-radius:var(--radius);touch-action:none;box-shadow:va
 #dunkSkip{position:absolute;right:14px;bottom:14px;color:rgba(255,255,255,.8);font-size:12px;background:rgba(0,0,0,.4);padding:6px 12px;border-radius:14px}
 .dunk-confetti{position:absolute;pointer-events:none}
 #faceLock{position:fixed;inset:0;z-index:9998;background:var(--bg);display:none;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:28px}
+
+/* ===== 1on1チャレンジ（裏コード：ロゴタップで表示） ===== */
+#oo1Overlay{position:fixed;inset:0;z-index:900;display:none;background:var(--bg)}
+#oo1Overlay.show{display:block}
+#oo1Video{position:fixed;inset:0;z-index:2;background:#0e1218;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:opacity .6s ease}
+#oo1Video.out{opacity:0;pointer-events:none}
+#oo1Video video{width:100%;height:100%;object-fit:contain}
+#oo1Video .cap{position:absolute;top:7%;left:0;right:0;text-align:center;color:#fff;pointer-events:none}
+#oo1Video .cap .t1{font-size:11px;letter-spacing:.3em;font-weight:700;opacity:.75}
+#oo1Video .cap .t2{font-size:21px;font-weight:900;margin-top:6px;text-shadow:0 4px 24px rgba(0,0,0,.6)}
+#oo1Video .skip{position:absolute;bottom:6%;left:0;right:0;text-align:center;color:#fff;font-size:12px;font-weight:700;opacity:.65}
+#oo1Panel{position:absolute;inset:0;overflow-y:auto;padding:16px 14px 60px;display:flex;flex-direction:column;align-items:center}
+.oo1-wrap{width:100%;max-width:520px}
+.oo1-head{margin:4px 0 4px;padding:16px 18px;border-radius:var(--radius);background:var(--grad-accent);color:#fff;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.oo1-head::after{content:"🏀";position:absolute;right:-6px;bottom:-16px;font-size:84px;opacity:.14;transform:rotate(-15deg)}
+.oo1-close{position:absolute;top:12px;left:12px;width:30px;height:30px;border-radius:50%;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.14);color:#fff;font-size:15px;cursor:pointer;line-height:1}
+.oo1-coachbtn{position:absolute;top:14px;right:14px;font:inherit;font-size:11.5px;font-weight:900;padding:7px 13px;border-radius:999px;cursor:pointer;letter-spacing:.04em;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.35);color:#fff;transition:.2s}
+.oo1-coachbtn.on{background:var(--grad-orange);border-color:transparent;box-shadow:0 4px 14px rgba(226,89,31,.5)}
+.oo1-head h1{margin:0 0 0 40px;font-size:20px;font-weight:900;letter-spacing:.02em}
+.oo1-head p{margin:5px 0 0;font-size:12px;opacity:.85;font-weight:500}
+.oo1-head b{color:#ffb98f}
+.oo1-card{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-sm);padding:16px;margin-top:14px}
+.oo1-card h2{margin:0 0 12px;font-size:14px;font-weight:900;letter-spacing:.04em;display:flex;align-items:center;gap:7px}
+.oo1-card h2 .sub{margin-left:auto;font-size:11px;color:var(--muted);font-weight:500}
+.oo1-card.locked .oo1-lockable{opacity:.4;pointer-events:none;filter:grayscale(.4)}
+.oo1-lockmsg{display:none;margin-top:12px;font-size:12px;font-weight:700;color:var(--muted);background:var(--well);border:1px dashed var(--line);border-radius:var(--radius-sm);padding:10px 12px;text-align:center}
+.oo1-card.locked .oo1-lockmsg{display:block}
+.oo1-fl{display:block;font-size:11.5px;font-weight:700;color:var(--text-soft);margin:12px 2px 6px}
+.oo1-card input[type=date]{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);font:inherit;font-size:15px;background:var(--well);color:var(--text)}
+.oo1-chips{display:flex;flex-wrap:wrap;gap:8px}
+.oo1-chip{padding:9px 14px;border-radius:999px;border:1px solid var(--line);background:var(--well);font-size:13.5px;font-weight:700;cursor:pointer;transition:.15s;user-select:none}
+.oo1-chip.on{background:var(--grad-orange);color:#fff;border-color:transparent;box-shadow:0 4px 12px rgba(226,89,31,.35);transform:scale(1.04)}
+.oo1-stepper{display:flex;align-items:center;gap:14px;justify-content:center;background:var(--well);border:1px solid var(--line);border-radius:var(--radius-sm);padding:8px}
+.oo1-step{width:44px;height:44px;border-radius:50%;border:1.5px solid var(--accent-line);background:var(--panel);color:var(--accent);font-size:22px;font-weight:900;cursor:pointer;font-family:inherit}
+.oo1-cnt{min-width:74px;text-align:center;font-size:15px;font-weight:700;color:var(--text-soft)}
+.oo1-cnt b{font-size:28px;color:var(--accent);font-weight:900;margin-right:2px}
+.oo1-vsrow{display:flex;gap:10px;margin-top:14px}
+.oo1-vsbtn{flex:1;padding:15px 0;border-radius:var(--radius-sm);border:none;cursor:pointer;font:inherit;font-size:15px;font-weight:900;letter-spacing:.05em}
+.oo1-win{background:var(--grad-orange);color:#fff;box-shadow:0 6px 16px rgba(226,89,31,.35)}
+.oo1-lose{background:var(--panel);border:1.5px solid var(--line);color:var(--text-soft)}
+.oo1-vsbtn small{display:block;font-size:10.5px;font-weight:500;opacity:.85;margin-top:2px}
+.oo1-player{border:1px solid var(--line);border-radius:var(--radius-sm);padding:12px 14px;margin-top:10px;background:var(--well)}
+.oo1-player .top{display:flex;align-items:center;gap:8px}
+.oo1-player .name{font-size:15px;font-weight:900}
+.oo1-player .rec{margin-left:auto;font-size:11.5px;color:var(--muted);font-weight:700}
+.oo1-balls{display:flex;gap:5px;margin:9px 0 6px;font-size:20px}
+.oo1-balls .empty{filter:grayscale(1);opacity:.28}
+.oo1-remain{font-size:13px;font-weight:900;color:var(--accent)}
+.oo1-ice{margin-left:6px;font-size:17px;letter-spacing:2px;cursor:pointer}
+.oo1-bar{height:7px;border-radius:99px;background:var(--line-soft);margin-top:8px;overflow:hidden}
+.oo1-bar i{display:block;height:100%;border-radius:99px;background:var(--grad-orange);transition:width .5s cubic-bezier(.3,.7,.4,1)}
+.oo1-hrow{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px dashed var(--line);font-size:13px}
+.oo1-hrow:last-child{border-bottom:none}
+.oo1-hrow .d{color:var(--muted);font-size:12px;width:64px}
+.oo1-hrow .n{font-weight:700}
+.oo1-pill{margin-left:auto;font-size:11px;font-weight:900;border-radius:999px;padding:3px 10px}
+.oo1-pill.w{color:var(--ok-fg);background:var(--ok-bg);border:1px solid var(--ok-line)}
+.oo1-pill.l{color:var(--rose-fg);background:var(--rose-bg);border:1px solid var(--rose-line)}
+.oo1-note{margin-top:14px;font-size:11px;color:var(--muted);line-height:1.8;border-top:1px dashed var(--line);padding-top:10px}
 </style>
 <script>
 (function(){var t;try{t=localStorage.getItem('themeMode')}catch(e){}
@@ -511,7 +570,7 @@ async function bDataSave(key, value){
 </script>
 
 <header class="app-header">
-  <div class="logo">🏀</div>
+  <div class="logo" onclick="oo1Open()" style="cursor:pointer">🏀</div>
   <div class="ttl"><b>忠生中バスケ部</b><span>TEAM BOARD</span></div>
   <button class="theme-toggle" id="themeBtn" onclick="toggleTheme()" aria-label="ライト／ダーク切り替え">🌙</button>
 </header>
@@ -812,6 +871,57 @@ async function bDataSave(key, value){
   <a href="#" onclick="faceRemove();return false" style="color:var(--muted2);font-size:12px;margin-top:18px">この端末の顔認証を解除</a>
 </div>
 <div class="toast" id="toast"></div>
+
+<div id="oo1Overlay">
+  <div id="oo1Video">
+    <video id="oo1Vid" src="ice-intro.mp4" autoplay muted playsinline></video>
+    <div class="cap"><div class="t1">SECRET MODE UNLOCKED</div><div class="t2">🍦 1on1チャレンジ</div></div>
+    <div class="skip">タップでスキップ ▶</div>
+  </div>
+  <div id="oo1Panel">
+    <div class="oo1-wrap">
+      <div class="oo1-head">
+        <button class="oo1-close" onclick="oo1Close()">✕</button>
+        <button class="oo1-coachbtn" id="oo1CoachBtn" onclick="openCoach()">🔒 コーチ</button>
+        <h1>🍦 1on1チャレンジ</h1>
+        <p>挑戦者 <b>部員</b> vs 守護神 <b>今村コーチ</b> — 5本決めたらアイスクリーム!</p>
+      </div>
+
+      <div class="oo1-card" id="oo1RecCard">
+        <h2>📝 きょうの結果を記録 <span class="sub">選手はメンバーから自動取得</span></h2>
+        <div class="oo1-lockmsg">🔒 記録の変更はコーチモードのみ(右上の「コーチ」からON)</div>
+        <div class="oo1-lockable">
+          <label class="oo1-fl">日付</label>
+          <input type="date" id="oo1Date">
+          <label class="oo1-fl">挑戦した選手(タップで選択)</label>
+          <div class="oo1-chips" id="oo1Chips"></div>
+          <label class="oo1-fl">決めた本数</label>
+          <div class="oo1-stepper">
+            <button class="oo1-step" onclick="oo1Bump(-1)">−</button>
+            <div class="oo1-cnt"><b id="oo1Cnt">1</b> 本</div>
+            <button class="oo1-step" onclick="oo1Bump(1)">＋</button>
+          </div>
+          <div class="oo1-vsrow">
+            <button class="oo1-vsbtn oo1-win" onclick="oo1Record(oo1Cnt)">🏀 得点できた!<small><span id="oo1CntLbl">1</span>本ぶんゲージに加算</small></button>
+            <button class="oo1-vsbtn oo1-lose" onclick="oo1Record(0)">😤 できなかった…<small>次こそ決める</small></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="oo1-card">
+        <h2>🍨 アイスまでの道のり <span class="sub">5本決めたら🍦1個</span></h2>
+        <div id="oo1Players"></div>
+      </div>
+
+      <div class="oo1-card">
+        <h2>📅 対戦履歴</h2>
+        <div id="oo1History"></div>
+      </div>
+
+      <p class="oo1-note">🍦は「まだ買ってあげていないアイス」。コーチが買ってあげたらタップで消せます。記録の追加・🍦の精算はコーチモードの時だけできます。</p>
+    </div>
+  </div>
+</div>
 
 <script>
 const canvas = document.getElementById('court');
@@ -2706,6 +2816,7 @@ function bUpdateCoachUI(){ document.getElementById('bCoachArea').innerHTML=bCoac
   if(!bCoachPass){ const pr=document.getElementById('pane-roster'); if(pr && pr.classList.contains('active')) setMainTab('score'); }
   if(document.getElementById('pane-score') && document.getElementById('pane-score').classList.contains('active')) renderScoreList();
   if(document.getElementById('pmenuArea')) renderPmenu();
+  if(typeof oo1SyncCoachUI==='function') oo1SyncCoachUI();
 }
 function bOpenAnswer(id){ showModal('<h3>回答する</h3><div class="vl-field"><label>回答</label><textarea id="bAText" maxlength="800" style="min-height:110px"></textarea></div><div class="vl-mbtns"><button class="ng" onclick="closeModal()">キャンセル</button><button class="ok" onclick="bSendAnswer(\''+id+'\')">送信</button></div>'); setTimeout(()=>{const el=document.getElementById('bAText');if(el)el.focus();},50); }
 async function bSendAnswer(id){ const text=document.getElementById('bAText').value.trim();if(!text)return; let res;try{res=await bApi({action:'answer',id,text,coach:bCoachPass});}catch(e){toast('送信できませんでした');return;} if(res.ok){closeModal();toast('回答しました');bLoadList();}else toast('送信できませんでした'); }
@@ -3033,6 +3144,110 @@ document.addEventListener('visibilitychange',()=>{
 });
 document.getElementById('vlOverlay').addEventListener('click',e=>{if(e.target.id==='vlOverlay' && !boardGateActive)closeModal();}); document.addEventListener('keydown',e=>{if(e.key==='Escape' && !boardGateActive)closeModal();});
 if(!bConfigured()){ document.getElementById('bSetupNotice').style.display=''; document.getElementById('bListArea').innerHTML=''; }
+
+/* ===== 1on1チャレンジ（裏コード：ロゴタップで表示） ===== */
+let oo1Recs=[], oo1Redeem={}, oo1Sel=null, oo1Cnt=1;
+async function oo1Open(){
+  document.getElementById('oo1Overlay').classList.add('show');
+  document.getElementById('oo1Panel').style.display='none';
+  oo1PlayVideo();
+  oo1SyncCoachUI();
+  const d=document.getElementById('oo1Date');
+  if(d && !d.value){ const n=new Date(); d.value=n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0'); }
+  document.getElementById('oo1Chips').innerHTML='<div class="b-empty" style="padding:6px 0">読み込み中…</div>';
+  document.getElementById('oo1Players').innerHTML='<div class="b-empty">読み込み中…</div>';
+  document.getElementById('oo1History').innerHTML='<div class="b-empty">読み込み中…</div>';
+  if(!roster) await loadRoster();
+  try{ const s=await bDataGet('oo1_recs'); oo1Recs = s?JSON.parse(s):[]; }catch(e){ oo1Recs=[]; }
+  try{ const s=await bDataGet('oo1_redeem'); oo1Redeem = s?JSON.parse(s):{}; }catch(e){ oo1Redeem={}; }
+  oo1RenderChips(); oo1RenderPlayers(); oo1RenderHistory();
+}
+function oo1Close(){ document.getElementById('oo1Overlay').classList.remove('show'); }
+function oo1PlayVideo(){
+  const wrap=document.getElementById('oo1Video'), v=document.getElementById('oo1Vid');
+  wrap.__done=false; wrap.classList.remove('out'); wrap.style.display='flex';
+  const finish=()=>{
+    if(wrap.__done)return; wrap.__done=true;
+    wrap.classList.add('out');
+    setTimeout(()=>{ wrap.style.display='none'; document.getElementById('oo1Panel').style.display='flex'; },650);
+  };
+  if(!v || v.error || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)){ finish(); return; }
+  v.currentTime=0; v.onended=finish; v.onerror=finish; wrap.onclick=finish;
+  const p=v.play(); if(p && p.catch) p.catch(finish);
+  setTimeout(()=>{ if(!wrap.__done) finish(); },12000);
+}
+function oo1RenderChips(){
+  const box=document.getElementById('oo1Chips');
+  const list=roster||[];
+  if(!list.length){ box.innerHTML='<div class="b-empty" style="padding:6px 0">メンバーが未登録です。「メンバー」でコーチが登録してください。</div>'; return; }
+  if(oo1Sel===null || !list.some(p=>p.id===oo1Sel)) oo1Sel=list[0].id;
+  box.innerHTML=list.map(p=>'<span class="oo1-chip '+(p.id===oo1Sel?'on':'')+'" onclick="oo1Sel=\''+p.id+'\';oo1RenderChips()">'+esc(p.name)+'</span>').join('');
+}
+function oo1Bump(v){ oo1Cnt=Math.min(9,Math.max(1,oo1Cnt+v)); document.getElementById('oo1Cnt').textContent=oo1Cnt; document.getElementById('oo1CntLbl').textContent=oo1Cnt; }
+function oo1Stats(pid){
+  let total=0,tries=0,gauge=0,ice=0;
+  oo1Recs.filter(r=>r.pid===pid).forEach(r=>{ tries++; if(r.k>0){ total+=r.k; gauge+=r.k; while(gauge>=5){ gauge-=5; ice++; } } });
+  ice -= (oo1Redeem[pid]||0); if(ice<0) ice=0;
+  return {total,tries,gauge,ice};
+}
+function oo1RenderPlayers(){
+  const box=document.getElementById('oo1Players');
+  const list=roster||[];
+  if(!list.length){ box.innerHTML='<div class="b-empty">メンバーが未登録です。</div>'; return; }
+  box.innerHTML=list.map(p=>{
+    const s=oo1Stats(p.id);
+    const balls=Array.from({length:5},(_,j)=>'<span class="'+(j<s.gauge?'':'empty')+'">🏀</span>').join('');
+    const iceb=s.ice>0?'<span class="oo1-ice" onclick="oo1RedeemTap(\''+p.id+'\')">'+('🍦'.repeat(s.ice))+'</span>':'';
+    return '<div class="oo1-player"><div class="top"><span class="name">'+esc(p.name)+'</span>'+iceb+
+      '<span class="rec">通算 '+s.total+'本 / 挑戦'+s.tries+'回</span></div>'+
+      '<div class="oo1-balls">'+balls+'</div>'+
+      '<div class="oo1-remain">あと <b style="font-size:17px">'+(5-s.gauge)+'</b> 本決めたらアイス!</div>'+
+      '<div class="oo1-bar"><i style="width:'+(s.gauge/5*100)+'%"></i></div></div>';
+  }).join('');
+}
+function oo1RenderHistory(){
+  const box=document.getElementById('oo1History');
+  const list=[...oo1Recs].sort((a,b)=>b.ts-a.ts).slice(0,30);
+  if(!list.length){ box.innerHTML='<div class="b-empty">まだ記録がありません。</div>'; return; }
+  box.innerHTML=list.map(r=>{
+    const p=(roster||[]).find(x=>x.id===r.pid);
+    const name=p?p.name:'(削除済み)';
+    const d=r.d? r.d.slice(5).replace('-','/'):'';
+    return '<div class="oo1-hrow"><span class="d">'+esc(d)+'</span><span class="n">'+esc(name)+'</span>'+
+      '<span class="oo1-pill '+(r.k>0?'w':'l')+'">'+(r.k>0?'○ '+r.k+'本':'● 0本')+'</span></div>';
+  }).join('');
+}
+function oo1SyncCoachUI(){
+  const b=document.getElementById('oo1CoachBtn'); if(!b) return;
+  b.classList.toggle('on', !!bCoachPass);
+  b.textContent = bCoachPass ? '✅ コーチON' : '🔒 コーチ';
+  const card=document.getElementById('oo1RecCard'); if(card) card.classList.toggle('locked', !bCoachPass);
+}
+async function oo1Record(k){
+  if(!bCoachPass){ toast('🔒 記録の変更はコーチモードでのみできます'); openCoach(); return; }
+  if(!oo1Sel){ toast('選手を選んでください'); return; }
+  const d=document.getElementById('oo1Date').value;
+  const before=oo1Stats(oo1Sel).ice;
+  oo1Recs.push({id:'oo_'+Date.now()+'_'+Math.random().toString(36).slice(2,6), pid:oo1Sel, k, d, ts:Date.now()});
+  await bDataSave('oo1_recs', JSON.stringify(oo1Recs));
+  oo1RenderPlayers(); oo1RenderHistory();
+  const after=oo1Stats(oo1Sel).ice;
+  if(after>before){
+    const p=(roster||[]).find(x=>x.id===oo1Sel);
+    showModal('<div style="text-align:center"><div style="font-size:56px">🍦</div><h3 style="margin:10px 0 4px">'+esc(p?p.name:'')+'、アイスゲット!</h3><p style="font-size:13px;color:var(--muted)">今村コーチから5本達成！ごちそうさまです🎉</p><div class="vl-mbtns"><button class="ok" onclick="closeModal()">やったー!</button></div></div>');
+  } else {
+    toast(k>0?'記録しました('+k+'本)':'記録しました(0本)');
+  }
+}
+async function oo1RedeemTap(pid){
+  if(!bCoachPass){ toast('🔒 🍦の精算はコーチモードでのみできます'); openCoach(); return; }
+  const s=oo1Stats(pid);
+  if(s.ice<=0) return;
+  oo1Redeem[pid]=(oo1Redeem[pid]||0)+1;
+  await bDataSave('oo1_redeem', JSON.stringify(oo1Redeem));
+  oo1RenderPlayers();
+  toast('🍦を購入済みにしました');
+}
 </script>
 </body>
 </html>
