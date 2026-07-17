@@ -272,6 +272,25 @@ canvas{display:block;border-radius:var(--radius);touch-action:none;box-shadow:va
 #bPaneList,#bPanePost,#bPaneTicket{width:100%}
 
 /* モーダル */
+/* 合言葉ゲート＝フルスクリーン表紙（背景に動画） */
+#boardCover{position:fixed;inset:0;z-index:2000;display:none;overflow:hidden;background:#04070c}
+#boardCover.show{display:block;animation:fadeUp .4s ease}
+.bc-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.bc-scrim{position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(6,10,18,.6) 0%,rgba(6,10,18,.18) 32%,rgba(6,10,18,.46) 64%,rgba(4,7,12,.9) 100%)}
+.bc-inner{position:relative;z-index:2;height:100%;width:100%;max-width:440px;margin:0 auto;display:flex;flex-direction:column;justify-content:space-between;padding:max(30px,env(safe-area-inset-top)) 24px max(26px,env(safe-area-inset-bottom));color:#eef3f9;text-align:center;box-sizing:border-box}
+.bc-top{padding-top:6px}
+.bc-logo{width:58px;height:58px;margin:0 auto 12px;border-radius:17px;display:flex;align-items:center;justify-content:center;font-size:30px;background:linear-gradient(135deg,#37c7df,#2a9fcf);box-shadow:0 10px 26px rgba(55,199,223,.45)}
+.bc-title{font-size:26px;font-weight:900;letter-spacing:.16em;text-shadow:0 2px 14px rgba(0,0,0,.55)}
+.bc-sub{font-size:13px;font-weight:700;color:#aae5f1;letter-spacing:.08em;margin-top:5px;text-shadow:0 2px 10px rgba(0,0,0,.55)}
+.bc-card{background:rgba(12,18,28,.6);border:1px solid rgba(255,255,255,.14);border-radius:20px;padding:20px 18px 18px;backdrop-filter:blur(10px);box-shadow:0 22px 54px rgba(0,0,0,.5);text-align:left}
+.bc-label{display:block;font-size:12px;font-weight:700;color:#d3deeb;margin-bottom:9px;letter-spacing:.04em}
+.bc-input{width:100%;padding:14px 15px;border-radius:13px;border:1px solid rgba(255,255,255,.18);background:rgba(6,10,16,.8);color:#fff;font-size:16px;font-family:inherit;outline:none;transition:.16s;box-sizing:border-box}
+.bc-input:focus{border-color:#37c7df;box-shadow:0 0 0 3px rgba(55,199,223,.25)}
+.bc-btn{width:100%;margin-top:13px;padding:15px;border:none;border-radius:13px;font-size:16px;font-weight:900;color:#fff;cursor:pointer;background:linear-gradient(135deg,#ff9a5a,#ff7a33);box-shadow:0 12px 28px rgba(255,122,51,.42);font-family:inherit;transition:transform .12s,filter .12s}
+.bc-btn:hover{filter:brightness(1.06)}
+.bc-btn:active{transform:scale(.98)}
+.bc-btn:disabled{opacity:.6;cursor:default}
+.bc-note{margin-top:13px;font-size:11.5px;color:#aab8c8;line-height:1.65;text-align:center}
 .vl-overlay{position:fixed;inset:0;background:var(--overlay);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:1000;padding:18px}
 .vl-overlay.show{display:flex;animation:fadeUp .2s ease}
 .vl-modal{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px;width:100%;max-width:420px;box-shadow:0 24px 60px rgba(0,0,0,.28);max-height:90vh;overflow-y:auto;animation:popIn .22s ease}
@@ -315,6 +334,19 @@ canvas{display:block;border-radius:var(--radius);touch-action:none;box-shadow:va
 ::-webkit-scrollbar{width:10px;height:10px}
 ::-webkit-scrollbar-thumb{background:var(--scroll);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
 ::-webkit-scrollbar-thumb:hover{background:var(--scroll-h);background-clip:padding-box}
+
+/* ログイン演出（ダンク動画）・顔認証ロック */
+#dunkOverlay{position:fixed;inset:0;z-index:9999;background:#000;display:none}
+#dunkOverlay video{width:100%;height:100%;object-fit:cover}
+@media (min-aspect-ratio:1/1){#dunkOverlay video{object-fit:contain}}
+#dunkFlash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+#dunkShout{position:absolute;left:0;right:0;top:42%;text-align:center;opacity:0;pointer-events:none;color:#fff;font-size:clamp(30px,8vw,52px);font-weight:800;letter-spacing:.06em;text-shadow:0 0 26px rgba(226,89,31,.9),0 3px 10px rgba(0,0,0,.8)}
+#dunkWelcome{position:absolute;inset:0;background:rgba(10,12,16,.88);display:none;flex-direction:column;justify-content:center;align-items:center;gap:8px}
+#dunkWelcome .dw1{color:#fff;font-size:24px;font-weight:700;letter-spacing:.08em}
+#dunkWelcome .dw2{color:#c9d2df;font-size:13px}
+#dunkSkip{position:absolute;right:14px;bottom:14px;color:rgba(255,255,255,.8);font-size:12px;background:rgba(0,0,0,.4);padding:6px 12px;border-radius:14px}
+.dunk-confetti{position:absolute;pointer-events:none}
+#faceLock{position:fixed;inset:0;z-index:9998;background:var(--bg);display:none;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:28px}
 </style>
 <script>
 (function(){var t;try{t=localStorage.getItem('themeMode')}catch(e){}
@@ -743,7 +775,42 @@ async function bDataSave(key, value){
   <div id="rosterArea"><div class="b-empty">読み込み中…</div></div>
 </div>
 
+<div id="boardCover">
+  <video class="bc-video" autoplay muted loop playsinline preload="auto">
+    <source src="cover.mp4" type="video/mp4">
+  </video>
+  <div class="bc-scrim"></div>
+  <div class="bc-inner">
+    <div class="bc-top">
+      <div class="bc-logo">🏀</div>
+      <div class="bc-title">TEAM BOARD</div>
+      <div class="bc-sub">忠生中バスケ部</div>
+    </div>
+    <div class="bc-card">
+      <label class="bc-label" for="bcPass">チームの合言葉</label>
+      <input type="text" id="bcPass" class="bc-input" placeholder="合言葉を入力" autocomplete="off" autocapitalize="off" onkeydown="if(event.key==='Enter')bBoardGateSubmit()">
+      <button id="boardCoverBtn" class="bc-btn" onclick="bBoardGateSubmit()">入る</button>
+      <div class="bc-note">合言葉がわからないときは、顧問・コーチにご確認ください。</div>
+    </div>
+  </div>
+</div>
 <div class="vl-overlay" id="vlOverlay"><div class="vl-modal" id="vlModal"></div></div>
+
+<div id="dunkOverlay">
+  <video id="dunkVideo" src="login-dunk.mp4" muted playsinline preload="auto"></video>
+  <audio id="dunkVoice" src="nice-shoot.mp3" preload="auto"></audio>
+  <div id="dunkFlash"></div>
+  <div id="dunkShout">ナイスシュート！</div>
+  <div id="dunkWelcome"><div class="dw1">ようこそ</div><div class="dw2">忠生中バスケ部 チームボードへ</div></div>
+  <div id="dunkSkip">タップでスキップ</div>
+</div>
+<div id="faceLock">
+  <div style="font-size:44px;margin-bottom:10px">🏀</div>
+  <div style="color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:20px">おかえりなさい！<br>顔認証（または指紋・パスコード）でボードを開きます。</div>
+  <button class="b-primary" style="max-width:230px" onclick="faceLogin()">顔認証で開く</button>
+  <button class="b-ghost" style="max-width:230px;width:100%;margin-top:12px" onclick="faceUsePass()">合言葉で開く</button>
+  <a href="#" onclick="faceRemove();return false" style="color:var(--muted2);font-size:12px;margin-top:18px">この端末の顔認証を解除</a>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -2329,13 +2396,15 @@ let bTab='list',bVisMode='public',bCoachPass=null,bBoardPass=safeLSget('baske_bo
 let boardGateActive=false;
 function bBoardGate(){
   boardGateActive=true;
-  showModal('<h3>合言葉</h3><p class="b-hint" style="margin-bottom:14px">はじめに、このチームの合言葉を入力してください。予定・作戦盤・動画・名簿・スコアなど、すべてこのボードを使うために必要です。</p><div class="vl-field"><label>合言葉</label><input type="text" id="bBpass"></div><div class="vl-mbtns"><button class="ok" onclick="bBoardGateSubmit()">入る</button></div>');
-  setTimeout(()=>{const el=document.getElementById('bBpass');if(el)el.focus();},50);
+  const cover=document.getElementById('boardCover');
+  if(cover) cover.classList.add('show');
+  setTimeout(()=>{const el=document.getElementById('bcPass');if(el)el.focus();},60);
 }
 async function bBoardGateSubmit(){
-  const v=(document.getElementById('bBpass').value||'').trim();
+  dunkAudioPrime();
+  const v=(document.getElementById('bcPass').value||'').trim();
   if(!v){toast('合言葉を入力してください');return;}
-  const btn=document.querySelector('#vlModal button.ok');
+  const btn=document.getElementById('boardCoverBtn');
   if(btn){btn.disabled=true;btn.textContent='確認中…';}
   let res;
   try{ res=await bApi({action:'list', board:v}); }
@@ -2343,8 +2412,114 @@ async function bBoardGateSubmit(){
   if(btn){btn.disabled=false;btn.textContent='入る';}
   if(res && res.err==='board'){ toast('合言葉が違います'); return; }
   bBoardPass=v; safeLSset('baske_board_pass', bBoardPass);
-  boardGateActive=false; closeModal();
+  boardGateActive=false; const _cover=document.getElementById('boardCover'); if(_cover) _cover.classList.remove('show');
   bLoadList();
+  playDunk(offerPasskey);
+}
+
+/* ===== ログイン演出（ダンク動画）+ 顔認証（パスキー）
+   顔の照合は端末のセキュア領域で行われ、顔データがアプリに送信・保存されることはない ===== */
+const DUNK_IMPACT=1.62;
+let dunkBusy=false;
+function playDunk(onDone){
+  const ov=document.getElementById('dunkOverlay'), v=document.getElementById('dunkVideo');
+  const done=()=>{ if(onDone)onDone(); };
+  if(dunkBusy){ done(); return; }
+  if(!v || v.error || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)){ done(); return; }
+  dunkBusy=true;
+  const flash=document.getElementById('dunkFlash'), shout=document.getElementById('dunkShout'), wel=document.getElementById('dunkWelcome');
+  let fired=false, finished=false;
+  shout.style.opacity=0; wel.style.display='none'; ov.style.display='block';
+  const finish=()=>{
+    if(finished)return; finished=true;
+    try{v.pause();}catch(e){}
+    wel.style.display='flex'; wel.animate([{opacity:0},{opacity:1}],{duration:350});
+    setTimeout(()=>{ ov.style.display='none'; dunkBusy=false; done(); },1500);
+  };
+  v.currentTime=0;
+  v.ontimeupdate=()=>{ if(!fired && v.currentTime>=DUNK_IMPACT){ fired=true; dunkImpact(ov,flash,shout); } };
+  v.onended=finish;
+  ov.onclick=finish;
+  const p=v.play();
+  if(p && p.catch) p.catch(finish);
+  setTimeout(()=>{ if(!finished && (v.paused || v.currentTime===0)) finish(); },1500);
+}
+function dunkAudioPrime(){
+  const au=document.getElementById('dunkVoice');
+  if(!au || au.__primed) return;
+  au.muted=true;
+  const p=au.play();
+  if(p && p.then) p.then(()=>{ au.pause(); au.currentTime=0; au.muted=false; au.__primed=true; }).catch(()=>{ au.muted=false; });
+}
+function dunkImpact(ov,flash,shout){
+  const au=document.getElementById('dunkVoice');
+  if(au){ try{ au.currentTime=0; const p=au.play(); if(p&&p.catch)p.catch(()=>{}); }catch(e){} }
+  flash.animate([{opacity:0},{opacity:.75,offset:.12},{opacity:0}],{duration:420});
+  ov.animate([{transform:'translate(0,0)'},{transform:'translate(3px,4px)'},{transform:'translate(-3px,-2px)'},{transform:'translate(2px,2px)'},{transform:'translate(0,0)'}],{duration:340});
+  shout.animate([{opacity:0,transform:'scale(.6)'},{opacity:1,transform:'scale(1.08)',offset:.6},{opacity:1,transform:'scale(1)'}],{duration:420,easing:'cubic-bezier(.2,.8,.3,1.3)',fill:'forwards'});
+  if(navigator.vibrate) try{navigator.vibrate([30,40,90]);}catch(e){}
+  const colors=['#e2591f','#ffffff','#1976d2','#f5b27f'];
+  for(let i=0;i<40;i++){
+    const c=document.createElement('div'); const sz=5+Math.random()*5, circ=Math.random()<.3;
+    c.className='dunk-confetti';
+    c.style.cssText+=';left:50%;top:45%;width:'+sz+'px;height:'+(circ?sz:sz*.55)+'px;background:'+colors[i%4]+';border-radius:'+(circ?'50%':'1.5px');
+    ov.appendChild(c);
+    const vx=(Math.random()-.5)*320, vy=-(90+Math.random()*190);
+    c.animate([
+      {transform:'translate(0,0) rotate(0)',opacity:1},
+      {transform:'translate('+vx*.6+'px,'+vy+'px) rotate('+(Math.random()*360-180)+'deg)',opacity:1,offset:.35},
+      {transform:'translate('+vx+'px,'+(vy+420+Math.random()*140)+'px) rotate('+(Math.random()*720-360)+'deg)',opacity:0}
+    ],{duration:1800+Math.random()*900,easing:'cubic-bezier(.25,.5,.5,1)',fill:'forwards'});
+    setTimeout(()=>c.remove(),3200);
+  }
+}
+function faceKeyId(){ return safeLSget('baske_face_id')||''; }
+function bufToB64(b){ const a=new Uint8Array(b); let s=''; for(let i=0;i<a.length;i++)s+=String.fromCharCode(a[i]); return btoa(s); }
+function b64ToBuf(s){ const bin=atob(s); const a=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)a[i]=bin.charCodeAt(i); return a.buffer; }
+function faceRnd(n){ const a=new Uint8Array(n); crypto.getRandomValues(a); return a; }
+async function offerPasskey(){
+  if(faceKeyId() || safeLSget('baske_face_no')==='1' || !window.PublicKeyCredential || !window.isSecureContext) return;
+  let ok=false; try{ ok=await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable(); }catch(e){}
+  if(!ok) return;
+  showModal('<h3>顔認証でもっと速く</h3><p class="b-hint" style="margin-bottom:14px">次回からこの端末の顔認証（または指紋・パスコード）でボードを開けます。顔のデータが送信・保存されることはありません。</p><div class="vl-mbtns"><button class="ng" onclick="passkeyNo()">あとで</button><button class="ok" onclick="passkeyEnroll()">登録する</button></div>');
+}
+function passkeyNo(){ safeLSset('baske_face_no','1'); closeModal(); }
+async function passkeyEnroll(){
+  try{
+    const cred=await navigator.credentials.create({publicKey:{
+      challenge:faceRnd(32),
+      rp:{name:'忠生中バスケ部チームボード'},
+      user:{id:faceRnd(16),name:'tadao-member',displayName:'忠生中バスケ部'},
+      pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+      authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required'},
+      timeout:60000
+    }});
+    safeLSset('baske_face_id', bufToB64(cred.rawId));
+    closeModal(); toast('顔認証を登録しました。次回から使えます');
+  }catch(e){ closeModal(); toast('登録しませんでした'); }
+}
+function showFaceLock(){ document.getElementById('faceLock').style.display='flex'; }
+async function faceLogin(){
+  dunkAudioPrime();
+  try{
+    await navigator.credentials.get({publicKey:{
+      challenge:faceRnd(32),
+      allowCredentials:[{type:'public-key',id:b64ToBuf(faceKeyId()),transports:['internal']}],
+      userVerification:'required',
+      timeout:60000
+    }});
+  }catch(e){ toast('顔認証できませんでした。合言葉でも開けます'); return; }
+  document.getElementById('faceLock').style.display='none';
+  bLoadList();
+  playDunk(null);
+}
+function faceUsePass(){ document.getElementById('faceLock').style.display='none'; bBoardGate(); }
+function faceRemove(){
+  showModal('<h3>顔認証の解除</h3><p class="b-hint" style="margin-bottom:14px">この端末の顔認証ログインを解除しますか？（合言葉はこの端末に残ります）</p><div class="vl-mbtns"><button class="ng" onclick="closeModal()">やめる</button><button class="ok" onclick="faceRemoveDo()">解除する</button></div>');
+}
+function faceRemoveDo(){
+  safeLSset('baske_face_id',''); safeLSset('baske_face_no','1');
+  closeModal(); document.getElementById('faceLock').style.display='none'; bLoadList();
 }
 
 async function bApi(params){const url=BBS_API+'?'+new URLSearchParams(params).toString();const r=await fetch(url,{method:'GET'});return await r.json();}
@@ -2828,7 +3003,9 @@ let currentSchedules=[];
   loadPlayerPlays().then(renderPlayerPlays);
 })();
 let _rszT; window.addEventListener('resize', ()=>{ clearTimeout(_rszT); _rszT=setTimeout(()=>{ try{ layout(); draw(); }catch(e){} }, 160); });
-if(bBoardPass){
+if(bBoardPass && faceKeyId() && window.PublicKeyCredential && window.isSecureContext){
+  showFaceLock();
+}else if(bBoardPass){
   bApi({action:'list', board:bBoardPass}).then(res=>{
     if(res && res.err==='board'){ bBoardPass=null; safeLSset('baske_board_pass',''); bBoardGate(); return; }
     bLoadList();
