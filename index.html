@@ -346,7 +346,7 @@ canvas{display:block;border-radius:var(--radius);touch-action:none;box-shadow:va
 #dunkWelcome .dw2{color:#c9d2df;font-size:13px}
 #dunkSkip{position:absolute;right:14px;bottom:14px;color:rgba(255,255,255,.8);font-size:12px;background:rgba(0,0,0,.4);padding:6px 12px;border-radius:14px}
 .dunk-confetti{position:absolute;pointer-events:none}
-#faceLock{position:fixed;inset:0;z-index:9998;background:var(--bg);display:none;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:28px}
+#faceLock{position:fixed;inset:0;z-index:9998;background:#04070c;display:none;overflow:hidden}
 
 /* ===== 1on1チャレンジ（裏コード：ロゴタップで表示） ===== */
 #oo1Overlay{position:fixed;inset:0;z-index:900;display:none;background:var(--bg)}
@@ -864,11 +864,23 @@ async function bDataSave(key, value){
   <div id="dunkSkip">タップでスキップ</div>
 </div>
 <div id="faceLock">
-  <div style="font-size:44px;margin-bottom:10px">🏀</div>
-  <div style="color:var(--muted);font-size:13px;line-height:1.7;margin-bottom:20px">おかえりなさい！<br>顔認証（または指紋・パスコード）でボードを開きます。</div>
-  <button class="b-primary" style="max-width:230px" onclick="faceLogin()">顔認証で開く</button>
-  <button class="b-ghost" style="max-width:230px;width:100%;margin-top:12px" onclick="faceUsePass()">合言葉で開く</button>
-  <a href="#" onclick="faceRemove();return false" style="color:var(--muted2);font-size:12px;margin-top:18px">この端末の顔認証を解除</a>
+  <video class="bc-video" autoplay muted loop playsinline preload="auto">
+    <source src="cover.mp4" type="video/mp4">
+  </video>
+  <div class="bc-scrim"></div>
+  <div class="bc-inner">
+    <div class="bc-top">
+      <div class="bc-logo">🏀</div>
+      <div class="bc-title">TEAM BOARD</div>
+      <div class="bc-sub">忠生中バスケ部</div>
+    </div>
+    <div class="bc-card" style="text-align:center">
+      <div style="color:#d3deeb;font-size:13px;line-height:1.7;margin-bottom:16px">おかえりなさい！<br>顔認証（または指紋・パスコード）でボードを開きます。</div>
+      <button class="bc-btn" onclick="faceLogin()">顔認証で開く</button>
+      <button class="bc-btn" style="margin-top:10px;background:rgba(255,255,255,.14);box-shadow:none" onclick="faceUsePass()">合言葉で開く</button>
+      <div class="bc-note"><a href="#" onclick="faceRemove();return false" style="color:#aab8c8">この端末の顔認証を解除</a></div>
+    </div>
+  </div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -2536,7 +2548,14 @@ function playDunk(onDone){
   const ov=document.getElementById('dunkOverlay'), v=document.getElementById('dunkVideo');
   const done=()=>{ if(onDone)onDone(); };
   if(dunkBusy){ done(); return; }
-  if(!v || v.error || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)){ done(); return; }
+  if(!v || v.error || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)){
+    /* 動画が再生できない/モーション削減設定の端末でも、ログイン成功が分かるよう短い「ようこそ」だけは出す */
+    dunkBusy=true;
+    const wel=document.getElementById('dunkWelcome');
+    ov.style.display='block'; wel.style.display='flex'; wel.style.opacity=1;
+    setTimeout(()=>{ ov.style.display='none'; wel.style.display='none'; dunkBusy=false; done(); },900);
+    return;
+  }
   dunkBusy=true;
   const flash=document.getElementById('dunkFlash'), shout=document.getElementById('dunkShout'), wel=document.getElementById('dunkWelcome');
   let fired=false, finished=false;
@@ -2613,7 +2632,13 @@ async function passkeyEnroll(){
     closeModal(); toast('顔認証を登録しました。次回から使えます');
   }catch(e){ closeModal(); toast('登録しませんでした'); }
 }
-function showFaceLock(){ document.getElementById('faceLock').style.display='flex'; }
+function showFaceLock(){
+  const el=document.getElementById('faceLock');
+  el.style.display='block';
+  /* この要素は最初display:noneのため、表示前に読み込まれた動画のautoplayが効かない端末があるので明示的に再生する */
+  const v=el.querySelector('video.bc-video');
+  if(v){ const p=v.play(); if(p&&p.catch) p.catch(()=>{}); }
+}
 async function faceLogin(){
   dunkAudioPrime();
   try{
@@ -3017,7 +3042,7 @@ function scDoAdd(){
   const oppName=(document.getElementById('scfOpp').value||'').trim();
   const target=document.getElementById('scfTarget').value;
   const players=scPlayersByTarget(target);
-  const rows = players.slice().sort((a,b)=>(parseInt(a.num,10)||999)-(parseInt(b.num,10)||999)).map(p=>({id:p.id,name:p.name,num:p.num||'',pts:0,ast:0,reb:0,stl:0}));
+  const rows = players.slice().sort((a,b)=>(parseInt(a.num,10)||999)-(parseInt(b.num,10)||999)).map(p=>({id:p.id,name:p.name,num:p.num||'',pts:0,ast:0,reb:0,stl:0,blk:0,tov:0}));
   const entry={id:'sc_'+Date.now(), date, opponent:oppName, target, rows, opp:''};
   scores.push(entry); persistScores(); closeModal(); renderScoreList(); openScoreEntry(entry.id);
 }
@@ -3034,7 +3059,7 @@ function openScoreEntry(id){
   scCur = scores.find(e=>e.id===id); if(!scCur)return;
   const coach=!!bCoachPass;
   let html='<h3>スコア　'+esc(formatSchedDate(scCur.date))+'　vs '+esc(scCur.opponent||'')+'</h3>';
-  html+='<div class="b-hint">自チーム選手の得点・アシスト・リバウンド・スティール（背番号順）'+(coach?'':'／入力はコーチのみ')+'</div>';
+  html+='<div class="b-hint">自チーム選手の得点・アシスト・リバウンド・スティール・ブロック・ターンオーバー（背番号順）'+(coach?'':'／入力はコーチのみ')+'</div>';
   if(coach){
     html+='<div class="vl-addrow" style="margin-top:0;margin-bottom:9px">'+
       '<button class="vl-addbtn" onclick="scPasteImport()">📥 動画分析から貼り付けて取り込み</button>'+
@@ -3042,13 +3067,13 @@ function openScoreEntry(id){
       '<input type="file" id="scCsvFile" accept=".csv,text/csv" style="display:none" onchange="scCsvFileChosen(this)">'+
       '<div class="b-hint" style="margin-top:0">'+
       '<a href="https://lsp-ima.github.io/basket-video-analysis/" target="_blank" rel="noopener">動画分析アプリ</a>'+
-      'の「スタッツ記録」で記録し「スコアにコピー」した内容を貼り付けるか、CSV保存したファイルを取り込むと、背番号が一致する選手に得点・AST・REB・STLが自動反映されます。</div>';
+      'の「スタッツ記録」で記録し「スコアにコピー」した内容を貼り付けるか、CSV保存したファイルを取り込むと、背番号が一致する選手に得点・AST・REB・STL・TO・BLKが自動反映されます。</div>';
   }
   if(!scCur.rows||!scCur.rows.length){ html+='<div class="b-empty">対象選手がいません（メンバーでA/Bを振り分けてから追加してください）。</div>'; }
   (scCur.rows||[]).forEach((r,i)=>{
     html+='<div class="vl-row" style="flex-wrap:wrap"><span class="vl-main" style="flex:1 1 130px"><span class="ic">'+esc(r.num||'?')+'</span><span class="lab">'+esc(r.name)+'</span></span>'+
       '<span class="vl-act" style="flex-wrap:wrap;gap:8px 12px">'+
-      scStatField(r,i,'pts','得点',coach)+scStatField(r,i,'ast','AST',coach)+scStatField(r,i,'reb','REB',coach)+scStatField(r,i,'stl','STL',coach)+
+      scStatField(r,i,'pts','得点',coach)+scStatField(r,i,'ast','AST',coach)+scStatField(r,i,'reb','REB',coach)+scStatField(r,i,'stl','STL',coach)+scStatField(r,i,'blk','BLK',coach)+scStatField(r,i,'tov','TO',coach)+
       '</span></div>';
   });
   html+='<div class="b-field" style="margin-top:10px"><label>相手チーム得点（任意）</label>'+
@@ -3096,12 +3121,12 @@ function scImportCsv(text){
     if(!m) continue;
     if(firstTeam===null) firstTeam=teamName;
     if(teamName!==firstTeam) continue; // 相手チームの行は取り込まない（自チーム＝最初のチームのみ）
-    map[m[1]]={pts:parseInt(cols[2],10)||0, reb:parseInt(cols[3],10)||0, ast:parseInt(cols[4],10)||0, stl:parseInt(cols[5],10)||0};
+    map[m[1]]={pts:parseInt(cols[2],10)||0, reb:parseInt(cols[3],10)||0, ast:parseInt(cols[4],10)||0, stl:parseInt(cols[5],10)||0, tov:parseInt(cols[6],10)||0, blk:parseInt(cols[7],10)||0};
   }
   let matched=0;
   (scCur.rows||[]).forEach(r=>{
     const s=map[String(r.num)];
-    if(s){ r.pts=s.pts; r.ast=s.ast; r.reb=s.reb; r.stl=s.stl; matched++; }
+    if(s){ r.pts=s.pts; r.ast=s.ast; r.reb=s.reb; r.stl=s.stl; r.tov=s.tov; r.blk=s.blk; matched++; }
   });
   persistScores();
   openScoreEntry(scCur.id);
@@ -3138,7 +3163,7 @@ if(faceLockNeeded() && !faceAuthFresh()){
 }
 document.addEventListener('visibilitychange',()=>{
   if(document.visibilityState==='visible' && faceLockNeeded() && !faceAuthFresh() && !dunkBusy
-     && document.getElementById('faceLock').style.display!=='flex'){
+     && document.getElementById('faceLock').style.display!=='block'){
     showFaceLock();
   }
 });
