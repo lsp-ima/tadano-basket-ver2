@@ -549,7 +549,10 @@ async function bDataGet(key){
 async function bDataPostRaw(key, value){
   try{
     // 大きいデータも送れるようにPOST（text/plainでCORSプリフライト回避）
-    const r = await fetch(BBS_API, {method:'POST', body: JSON.stringify({action:'data_save', key:key, value:value})});
+    // コーチモード中はコーチ情報を添える（コーチの更新だけ通知を出すため）
+    const body = {action:'data_save', key:key, value:value};
+    if(typeof bCoachPass!=='undefined' && bCoachPass) body.coach = bCoachPass;
+    const r = await fetch(BBS_API, {method:'POST', body: JSON.stringify(body)});
     const j = await r.json();
     return !!(j && j.ok);
   }catch(e){ return false; }
@@ -751,7 +754,10 @@ async function bDataSave(key, value){
 <div class="main-pane" id="pane-bbs">
   <div class="board-topbar">
     <h2>チーム連絡・予定</h2>
-    <div id="bCoachArea"><button class="b-ghost" onclick="openCoach()">コーチ</button></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+      <button class="b-ghost" id="pushBtn" onclick="pushEnable()">🔔 通知</button>
+      <div id="bCoachArea"><button class="b-ghost" onclick="openCoach()">コーチ</button></div>
+    </div>
   </div>
 
   <div id="bLockScreen" style="display:none; width:100%; text-align:center; padding:40px 0;">
@@ -3273,6 +3279,119 @@ async function oo1RedeemTap(pid){
   oo1RenderPlayers();
   toast('🍦を購入済みにしました');
 }
+</script>
+<script>
+/* ===== 🔔 プッシュ通知（Firebase Cloud Messaging） ===== */
+const PUSH_VAPID='BFsITK_M4Z3_6iueTX9-CB3_TX7bf22j22woIeSFxTt8rHdszdDuLXSH1RBlqPNSuJrrZC6Vefmr0U9stNtxNWs';
+const PUSH_FB_CONFIG={
+  apiKey:"AIzaSyC51hie7DO70yUuhwlVxSTboqkDkuh6NfI",
+  authDomain:"fluted-result-472023-k0.firebaseapp.com",
+  projectId:"fluted-result-472023-k0",
+  storageBucket:"fluted-result-472023-k0.firebasestorage.app",
+  messagingSenderId:"833223935802",
+  appId:"1:833223935802:web:2623863b5c10260b65b203"
+};
+function pushLoadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
+async function pushSdk(){
+  if(!(window.firebase&&window.firebase.messaging)){
+    await pushLoadScript('https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js');
+    await pushLoadScript('https://www.gstatic.com/firebasejs/10.12.5/firebase-messaging-compat.js');
+  }
+  if(!firebase.apps.length) firebase.initializeApp(PUSH_FB_CONFIG);
+  const reg=await navigator.serviceWorker.register('firebase-messaging-sw.js');
+  await navigator.serviceWorker.ready;
+  return reg;
+}
+function pushSupported(){ return ('serviceWorker' in navigator)&&('Notification' in window)&&('PushManager' in window); }
+function pushUpdateUI(){
+  const b=document.getElementById('pushBtn'); if(!b)return;
+  const on=!!safeLSget('baske_push_token') && ('Notification' in window) && Notification.permission==='granted';
+  b.textContent=on?'🔔 通知ON':'🔔 通知';
+}
+/* 通知の種類（この端末で受け取るものを選べる） */
+const PUSH_CATS=[
+  {key:'sched',  label:'📅 予定の更新'},
+  {key:'plays',  label:'🏀 作戦盤の更新'},
+  {key:'video',  label:'🎬 動画の更新'},
+  {key:'qa',     label:'💬 質問への回答'},
+  {key:'notice', label:'📝 コラムの更新'}
+];
+function pushGetCats(){
+  const v=safeLSget('baske_push_cats');
+  if(!v) return PUSH_CATS.map(c=>c.key);
+  if(v==='none') return [];
+  return v.split(',');
+}
+function pushOpenSettings(){
+  const cur=pushGetCats();
+  let html='<h3>🔔 通知の設定</h3><div style="font-size:12px;color:var(--muted);margin-bottom:8px">この端末に届く通知を選べます。</div>';
+  PUSH_CATS.forEach(c=>{
+    html+='<label style="display:flex;align-items:center;gap:9px;padding:7px 2px;font-size:14px;cursor:pointer"><input type="checkbox" id="pc_'+c.key+'" '+(cur.indexOf(c.key)>=0?'checked':'')+'>'+c.label+'</label>';
+  });
+  html+='<div class="vl-mbtns"><button class="ng" onclick="closeModal()">閉じる</button><button class="ok" onclick="pushSaveCats()">保存</button></div>';
+  if(typeof bCoachPass!=='undefined' && bCoachPass){
+    html+='<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">'
+      +'<div style="font-size:13px;font-weight:600;margin-bottom:6px">📝 コラムの更新をお知らせする（コーチ）</div>'
+      +'<textarea id="pushNoticeText" placeholder="例：新しいコラムを書きました！読んでね" style="width:100%;min-height:70px"></textarea>'
+      +'<div class="vl-mbtns"><button class="ok" onclick="pushSendNotice()">送信</button></div></div>';
+  }
+  showModal(html);
+}
+async function pushSaveCats(){
+  const sel=PUSH_CATS.filter(c=>{const el=document.getElementById('pc_'+c.key);return el&&el.checked;}).map(c=>c.key);
+  const cats=sel.length?sel.join(','):'none';
+  const token=safeLSget('baske_push_token');
+  if(!token){ closeModal(); return; }
+  let r=null; try{ r=await bApi({action:'push_save', token:token, cats:cats}); }catch(e){}
+  if(r&&r.ok){ safeLSset('baske_push_cats',cats); closeModal(); toast(sel.length?'🔔 通知の設定を保存しました':'この端末への通知を停止しました'); }
+  else toast('保存に失敗しました。電波の良い場所でもう一度お試しください');
+}
+async function pushSendNotice(){
+  const el=document.getElementById('pushNoticeText'); const text=(el&&el.value||'').trim();
+  if(!text){ toast('お知らせの内容を入力してください'); return; }
+  let r=null; try{ r=await bApi({action:'push_send', text:text, coach:bCoachPass}); }catch(e){}
+  if(r&&r.ok){ closeModal(); toast('📣 お知らせを送りました'); } else toast('送信に失敗しました');
+}
+async function pushEnable(){
+  try{
+    if(!pushSupported()){ toast('この端末のブラウザは通知に対応していません'); return; }
+    const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+    const standalone=(window.matchMedia&&matchMedia('(display-mode: standalone)').matches)||window.navigator.standalone;
+    if(isIOS&&!standalone){
+      showModal('<h3>🔔 通知を受け取るには</h3><div style="font-size:13px;line-height:1.9;color:var(--muted)">iPhone・iPadでは、先にこのページを<b>ホーム画面に追加</b>して、ホーム画面のアイコンから開くと通知をONにできます。<br><br>手順：Safari下の共有ボタン（□↑）→「ホーム画面に追加」</div><div class="vl-mbtns"><button class="ok" onclick="closeModal()">わかった</button></div>');
+      return;
+    }
+    if(safeLSget('baske_push_token') && Notification.permission==='granted'){
+      pushOpenSettings();
+      return;
+    }
+    toast('通知を設定しています…');
+    const perm=await Notification.requestPermission();
+    if(perm!=='granted'){ toast('通知が許可されませんでした'); return; }
+    const reg=await pushSdk();
+    const token=await firebase.messaging().getToken({vapidKey:PUSH_VAPID, serviceWorkerRegistration:reg});
+    if(!token){ toast('通知の設定に失敗しました'); return; }
+    const cats=pushGetCats().join(',')||'none';
+    let r=null; try{ r=await bApi({action:'push_save', token:token, cats:cats}); }catch(e){}
+    if(r&&r.ok){ safeLSset('baske_push_token',token); safeLSset('baske_push_cats',cats); pushUpdateUI(); toast('🔔 通知をONにしました'); pushOpenSettings(); }
+    else toast('通知の登録に失敗しました');
+  }catch(e){ toast('通知の設定に失敗しました'); }
+}
+/* 通知ON済みの端末は、開いたときにトークンを静かに確認（変わっていたら登録し直す） */
+setTimeout(async()=>{
+  try{
+    if(!pushSupported())return;
+    if(!safeLSget('baske_push_token'))return;
+    if(Notification.permission!=='granted')return;
+    const reg=await pushSdk();
+    const token=await firebase.messaging().getToken({vapidKey:PUSH_VAPID, serviceWorkerRegistration:reg});
+    if(token && token!==safeLSget('baske_push_token')){
+      const r=await bApi({action:'push_save', token:token, cats:(safeLSget('baske_push_cats')||'')});
+      if(r&&r.ok) safeLSset('baske_push_token',token);
+    }
+  }catch(e){}
+},3000);
+pushUpdateUI();
 </script>
 </body>
 </html>
