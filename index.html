@@ -3168,9 +3168,12 @@ if(faceLockNeeded() && !faceAuthFresh()){
   bBoardGate();
 }
 document.addEventListener('visibilitychange',()=>{
-  if(document.visibilityState==='visible' && faceLockNeeded() && !faceAuthFresh() && !dunkBusy
-     && document.getElementById('faceLock').style.display!=='block'){
-    showFaceLock();
+  if(document.visibilityState==='visible'){
+    pushClearBadge();
+    if(faceLockNeeded() && !faceAuthFresh() && !dunkBusy
+       && document.getElementById('faceLock').style.display!=='block'){
+      showFaceLock();
+    }
   }
 });
 document.getElementById('vlOverlay').addEventListener('click',e=>{if(e.target.id==='vlOverlay' && !boardGateActive)closeModal();}); document.addEventListener('keydown',e=>{if(e.key==='Escape' && !boardGateActive)closeModal();});
@@ -3308,6 +3311,8 @@ function pushUpdateUI(){
   const on=!!safeLSget('baske_push_token') && ('Notification' in window) && Notification.permission==='granted';
   b.textContent=on?'🔔 通知ON':'🔔 通知';
 }
+/* ホーム画面アイコンの①バッジを消す（ボードを見た＝既読とみなす） */
+function pushClearBadge(){ try{ if(navigator.clearAppBadge) navigator.clearAppBadge().catch(()=>{}); }catch(e){} }
 /* 通知の種類（この端末で受け取るものを選べる） */
 const PUSH_CATS=[
   {key:'sched',  label:'📅 予定の更新'},
@@ -3392,6 +3397,7 @@ setTimeout(async()=>{
   }catch(e){}
 },3000);
 pushUpdateUI();
+pushClearBadge();
 </script>
 </body>
 </html>
