@@ -3363,6 +3363,33 @@ async function oo1Record(k){
     toast(k>0?'記録しました('+k+'本)':'記録しました(0本)');
   }
 }
+/* ===== 新しい版が出ていたら自動で読み込み直す =====
+   iPhoneのホーム画面アプリは開き直しても前の画面を持ち続け、GitHub Pagesも10分キャッシュするため、
+   公開中のindex.htmlの更新日時(Last-Modified)と、いま表示中の版の更新日時を比べる。版番号の手書き更新は要らない */
+let updChecking=false;
+async function appUpdateCheck(){
+  if(updChecking||document.visibilityState!=='visible') return;
+  if(typeof hcTimer!=='undefined'&&hcTimer) return; // タイマー中は読み込み直さない
+  const ae=document.activeElement; if(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return; // 入力中もやめる
+  if([...document.querySelectorAll('#hcInputs input')].some(i=>i.value)) return;
+  const mine=Date.parse(document.lastModified); if(!mine) return;
+  updChecking=true;
+  try{
+    const r=await fetch(location.pathname+'?chk='+Date.now(),{method:'HEAD',cache:'no-store'});
+    const lm=r.headers.get('last-modified'), net=lm?Date.parse(lm):0;
+    if(net&&net-mine>60000){
+      let done=null; try{ done=sessionStorage.getItem('appReloadedFor'); }catch(e){}
+      if(done===String(net)) return; // 読み込み直しても古いまま(配信の遅れ)なら繰り返さない
+      try{ sessionStorage.setItem('appReloadedFor',String(net)); }catch(e){}
+      location.replace(location.pathname+'?v='+net+location.hash);
+    }
+  }catch(e){}
+  finally{ updChecking=false; }
+}
+document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') appUpdateCheck(); });
+window.addEventListener('pageshow',()=>setTimeout(appUpdateCheck,1500));
+setInterval(appUpdateCheck,30*60*1000);
+
 /* ===== ハンドリングチャレンジ(24秒で何回まわせるか) ===== */
 const HC_PARTS=[['head','頭'],['waist','腰'],['knee','膝']], HC_DIRS=[['r','右'],['l','左']];
 const HC_EVS=[]; HC_PARTS.forEach(p=>HC_DIRS.forEach(d=>HC_EVS.push([p[0]+'_'+d[0], p[1]+' '+d[1]+'まわし'])));
