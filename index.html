@@ -398,6 +398,47 @@ canvas{display:block;border-radius:var(--radius);touch-action:none;box-shadow:va
 .oo1-ice{margin-left:6px;font-size:17px;letter-spacing:2px;cursor:pointer}
 .oo1-bar{height:7px;border-radius:99px;background:var(--line-soft);margin-top:8px;overflow:hidden}
 .oo1-bar i{display:block;height:100%;border-radius:99px;background:var(--grad-orange);transition:width .5s cubic-bezier(.3,.7,.4,1)}
+.hc-video{position:relative;width:100%;aspect-ratio:16/9;border-radius:var(--radius-sm);overflow:hidden;background:#000}
+.hc-video iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.hc-how{margin:12px 0 0;padding-left:20px;font-size:13px;line-height:1.75}
+.hc-how li{margin:3px 0}
+.hc-tips{margin-top:10px;font-size:12.5px;line-height:1.7;background:var(--well);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px}
+.hc-tips b{color:var(--accent)}
+.hc-grid{display:grid;grid-template-columns:1fr 84px 84px;gap:8px 10px;align-items:center}
+.hc-grid .h{font-size:11.5px;color:var(--muted);font-weight:700;text-align:center}
+.hc-grid .p{font-size:14px;font-weight:700}
+.hc-grid input{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:var(--radius-sm);font:inherit;font-size:17px;text-align:right;background:var(--well);color:var(--text);box-sizing:border-box}
+.hc-grid .c{text-align:center;font-size:13px;font-weight:900}
+.hc-grid .c small{display:block;font-size:10.5px;color:var(--muted);font-weight:500}
+.hc-all{width:100%;border-collapse:collapse;font-size:13px}
+.hc-all th{font-size:10.5px;color:var(--muted);font-weight:700;padding:6px 2px;cursor:pointer;white-space:nowrap;line-height:1.3}
+.hc-all th.on{color:var(--accent)}
+.hc-all td{padding:8px 2px;border-top:1px dashed var(--line);text-align:center;font-weight:900}
+.hc-all td.nm{text-align:left;font-weight:700;white-space:nowrap}
+.hc-all tr.me td{background:var(--tint)}
+.hc-date{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:var(--radius-sm);font:inherit;font-size:15px;background:var(--well);color:var(--text);box-sizing:border-box;margin-bottom:4px}
+.hc-cal-head{display:flex;align-items:center;justify-content:space-between;margin:14px 0 6px}
+.hc-cal-head b{font-size:14px}
+.hc-cal-head button{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:8px;width:34px;height:30px;font-size:15px;cursor:pointer}
+.hc-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center}
+.hc-cal .w{font-size:10.5px;color:var(--muted);font-weight:700;padding:2px 0}
+.hc-cal .dd{position:relative;padding:8px 0;border-radius:8px;font-size:13px;font-weight:700;background:var(--well);color:var(--text-soft)}
+.hc-cal .dd.has{background:var(--grad-orange);color:#fff;cursor:pointer}
+.hc-cal .dd.today{outline:2px solid var(--accent);outline-offset:-2px}
+.hc-cal .dd.sel{box-shadow:0 0 0 3px var(--text) inset}
+.hc-cal .dd.blank{background:none}
+.hc-day{margin-top:10px;font-size:13px;background:var(--well);border:1px solid var(--line);border-radius:var(--radius-sm);padding:10px 12px}
+.hc-timer{text-align:center;font-size:84px;font-weight:900;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums;margin:14px 0 4px}
+.hc-timer.end{color:var(--red)}
+.hc-sub{text-align:center;font-size:12px;color:var(--muted);font-weight:700;margin-bottom:12px}
+.hc-go{width:100%;padding:15px 0;border-radius:var(--radius-sm);border:none;cursor:pointer;font:inherit;font-size:16px;font-weight:900;background:var(--grad-orange);color:#fff}
+.hc-go.stop{background:var(--panel);border:1.5px solid var(--line);color:var(--text-soft)}
+.hc-row{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px dashed var(--line);font-size:13.5px}
+.hc-row:last-child{border-bottom:none}
+.hc-row .k{width:34px;font-weight:900;color:var(--accent)}
+.hc-row .n{flex:1;font-weight:700}
+.hc-row .v{font-weight:900}
+.hc-row .x{border:none;background:none;color:var(--muted);font-size:15px;cursor:pointer;padding:0 4px}
 .oo1-hrow{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px dashed var(--line);font-size:13px}
 .oo1-hrow:last-child{border-bottom:none}
 .oo1-hrow .d{color:var(--muted);font-size:12px;width:64px}
@@ -580,6 +621,7 @@ async function bDataSave(key, value){
 
 <nav class="main-tabs">
   <button class="active" onclick="setMainTab('board')">🏀 作戦盤</button>
+  <button onclick="setMainTab('hc')">⏱ ハンドリング</button>
   <button onclick="setMainTab('video')">🎬 動画</button>
   <button onclick="setMainTab('menu')">📋 練習メニュー</button>
   <button onclick="setMainTab('bbs')">🔒 チーム</button>
@@ -832,6 +874,53 @@ async function bDataSave(key, value){
   <div class="board-topbar"><h2>スコア</h2></div>
   <div class="b-hint">試合ごとの得点記録です。お子さんの活躍を、いつでも見返せます。入力はコーチが行います。</div>
   <div id="scoreArea"><div class="b-empty">読み込み中…</div></div>
+</div>
+
+<div class="main-pane" id="pane-hc">
+  <div class="board-topbar"><h2>ハンドリングチャレンジ</h2></div>
+  <div class="b-hint">頭・腰・膝のまわりで、右まわし・左まわしをそれぞれ24秒。何回まわせるかのチャレンジです。</div>
+  <div class="oo1-card">
+    <h2>🎬 お手本とやり方</h2>
+    <div class="hc-video"><iframe src="https://www.youtube-nocookie.com/embed/zIwrU466R78" title="ボール回し(頭・腰・足)" loading="lazy" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe></div>
+    <ol class="hc-how">
+      <li>種目は6つ。頭・腰・膝のまわりを、右まわしと左まわしで1回ずつやります。</li>
+      <li>自分の名前を選び、タイマーで種目を選んでスタート。ブザーが鳴るまでの24秒で、何周まわせたかを数えます。1周で1回です。</li>
+      <li>落としたら拾って続けてOK。それまでの回数はそのまま数えます。</li>
+      <li>終わったら回数を入れて「記録する」。</li>
+    </ol>
+    <button class="hc-go" style="margin-top:12px;background:var(--panel);border:1.5px solid var(--accent-line);color:var(--accent)" onclick="hcHowto()">📱 アプリの使い方を動画で見る</button>
+    <div class="hc-tips"><b>コツ</b>　両手でキャッチするのは体の前と後ろだけ。手首を使って、ボールを下からすくうように回します。落とさないことより、速く回すことを意識してください。</div>
+  </div>
+  <div class="oo1-card">
+    <h2>🙋 自分の名前</h2>
+    <div class="oo1-chips" id="hcMeChips"><div class="b-empty" style="padding:6px 0">読み込み中…</div></div>
+  </div>
+  <div class="oo1-card">
+    <h2>⏱ 24秒タイマー</h2>
+    <div class="oo1-chips" id="hcEvChips"></div>
+    <div class="hc-timer" id="hcTime">24</div>
+    <div class="hc-sub" id="hcTimerSub">スタートを押すと3秒後に始まります</div>
+    <button class="hc-go" id="hcGo" onclick="hcToggle()">▶ スタート</button>
+    <label class="oo1-fl">声(押すと試し聞き)</label>
+    <div class="oo1-chips" id="hcVoiceChips"></div>
+    <div id="hcVoiceCredit" style="text-align:right;font-size:10px;color:var(--muted);margin-top:6px"></div>
+  </div>
+  <div class="oo1-card">
+    <h2>✏️ 記録する</h2>
+    <label class="oo1-fl" style="margin-top:0">日付(ふだんは今日のまま。前の日の分を入れるときだけ変える)</label>
+    <input type="date" id="hcDate" class="hc-date" onchange="hcDateTouched=(this.value!==hcToday())">
+    <label class="oo1-fl">回数(やった種目だけでOK)</label>
+    <div id="hcInputs"></div>
+    <button class="hc-go" id="hcSaveBtn" style="margin-top:12px" onclick="hcSave()">記録する</button>
+  </div>
+  <div class="oo1-card">
+    <h2>📈 自分の記録</h2>
+    <div id="hcMine"><div class="b-empty">名前を選ぶと表示されます。</div></div>
+  </div>
+  <div class="oo1-card">
+    <h2>👥 みんなの記録<span class="sub">ベスト回数・種目を押すと並べ替え</span></h2>
+    <div id="hcAll" style="overflow-x:auto"><div class="b-empty">読み込み中…</div></div>
+  </div>
 </div>
 
 <div class="main-pane" id="pane-roster">
@@ -2074,8 +2163,8 @@ function resetVlib(){
 
 /* ===== メインタブ ===== */
 function setMainTab(t){
-  document.querySelectorAll('.main-tabs button').forEach((b,i)=>{
-    b.classList.toggle('active',['board','video','menu','bbs','score','roster'][i]===t);
+  document.querySelectorAll('.main-tabs button').forEach(b=>{
+    b.classList.toggle('active',(b.getAttribute('onclick')||'').indexOf("setMainTab('"+t+"')")>=0);
   });
   document.querySelectorAll('.main-pane').forEach(p=>p.classList.remove('active'));
   document.getElementById('pane-'+t).classList.add('active');
@@ -2085,6 +2174,7 @@ function setMainTab(t){
   if(t==='menu'){ Promise.all([loadPmenu(), loadMyPlays(), loadPlayerPlays()]).then(renderPmenu); }
   if(t==='roster'){ loadRoster().then(renderRoster); }
   if(t==='score'){ loadScores().then(renderScoreList); }
+  if(t==='hc'){ hcOpen(); }
   if(t==='bbs') {
     document.getElementById('bUnlockedContent').style.display = 'none';
     document.getElementById('bLockScreen').style.display = 'none';
@@ -3272,6 +3362,226 @@ async function oo1Record(k){
   } else {
     toast(k>0?'記録しました('+k+'本)':'記録しました(0本)');
   }
+}
+/* ===== ハンドリングチャレンジ(24秒で何回まわせるか) ===== */
+const HC_PARTS=[['head','頭'],['waist','腰'],['knee','膝']], HC_DIRS=[['r','右'],['l','左']];
+const HC_EVS=[]; HC_PARTS.forEach(p=>HC_DIRS.forEach(d=>HC_EVS.push([p[0]+'_'+d[0], p[1]+' '+d[1]+'まわし'])));
+const HC_SEC=24;
+let hcRecs=[], hcEv='head_r', hcSort='', hcMe=safeLSget('hcMe')||null, hcTimer=null, hcAudio=null;
+function hcEvName(k){ const e=HC_EVS.find(x=>x[0]===k); return e?e[1]:k; }
+function hcToday(){ const n=new Date(); return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0')+'-'+String(n.getDate()).padStart(2,'0'); }
+// 記録は1人1キー(hc_<選手ID>)に [種目,回数,日付,時刻] の配列で保存。全員で同じキーを書き換えると同時に押した子の記録が消えるため
+let hcDateTouched=false, hcCalYM=null, hcCalSel=null;
+let hcBusy=false, hcLoadErr=false, hcWake=null, hcSeq=0;
+function hcKey(pid){ return 'hc_'+pid; }
+async function hcGetStrict(key){
+  const r=await fetch(BBS_API+'?'+new URLSearchParams({action:'data_get', key:key}).toString());
+  const j=await r.json();
+  if(!j||!j.ok) throw new Error('get');
+  const v=j.value||'';
+  return v.indexOf('#CHUNKED:')===0 ? await bDataGet(key) : v;
+}
+function hcParse(pid,v){
+  let a=[]; try{ a=v?JSON.parse(v):[]; }catch(e){ a=[]; }
+  return (Array.isArray(a)?a:[]).map(x=>({id:pid+'_'+x[3]+'_'+x[0], pid, ev:x[0], n:x[1], d:x[2], ts:x[3]}));
+}
+function hcPack(pid){ return JSON.stringify(hcRecs.filter(r=>r.pid===pid).map(r=>[r.ev,r.n,r.d,r.ts])); }
+async function hcLoad(){
+  const seq=++hcSeq, list=roster||[], out=[]; let i=0, err=false;
+  const work=async()=>{ while(i<list.length){ const p=list[i++]; try{ out.push(...hcParse(p.id, await hcGetStrict(hcKey(p.id)))); }catch(e){ err=true; } } };
+  await Promise.all(Array.from({length:6},work));
+  if(seq!==hcSeq) return false; // 途中で保存・削除・再読み込みがあったら古い結果は捨てる
+  hcRecs=out; hcLoadErr=err; return true;
+}
+let hcInputsDone=false;
+async function hcOpen(){
+  const di=document.getElementById('hcDate'); di.max=hcToday();
+  if(!hcDateTouched||!di.value) di.value=hcToday(); // ふだんは開いた日の日付に自動で合わせる
+  hcRenderEvChips(); hcRenderVoiceChips();
+  try{ if(!hcAudio) hcAudio=new (window.AudioContext||window.webkitAudioContext)(); hcVoiceLoad(); }catch(e){}
+  if(!hcInputsDone){ hcRenderInputs(); hcInputsDone=true; }
+  if(!roster) await loadRoster();
+  hcRenderMe();
+  let ok=false;
+  for(let k=0;k<3&&!ok;k++) ok=await hcLoad(); // 読み込み中に保存されたら、保存後の中身で読み直す
+  if(!ok) return;
+  hcRenderMine(); hcRenderAll();
+  if(hcLoadErr) toast('⚠️ 一部の記録を読み込めませんでした。開き直してください');
+}
+function hcRenderEvChips(){
+  document.getElementById('hcEvChips').innerHTML=HC_EVS.map(e=>'<span class="oo1-chip '+(e[0]===hcEv?'on':'')+'" onclick="if(!hcTimer){hcEv=\''+e[0]+'\';hcRenderEvChips()}">'+e[1]+'</span>').join('');
+}
+function hcRenderInputs(){
+  document.getElementById('hcInputs').innerHTML='<div class="hc-grid"><span></span><span class="h">右まわし</span><span class="h">左まわし</span>'+
+    HC_PARTS.map(p=>'<span class="p">'+p[1]+'</span>'+HC_DIRS.map(d=>'<input type="number" inputmode="numeric" min="0" max="99" id="hcIn_'+p[0]+'_'+d[0]+'" placeholder="回">').join('')).join('')+'</div>';
+}
+function hcRenderMe(){
+  const box=document.getElementById('hcMeChips'), list=roster||[];
+  if(!list.length){ box.innerHTML='<div class="b-empty" style="padding:6px 0">メンバーが未登録です。</div>'; return; }
+  box.innerHTML=list.map(p=>'<span class="oo1-chip '+(p.id===hcMe?'on':'')+'" onclick="hcPickMe(\''+p.id+'\')">'+esc(p.name)+'</span>').join('');
+}
+function hcPickMe(id){ hcMe=id; try{localStorage.setItem('hcMe',id);}catch(e){} hcRenderMe(); hcRenderMine(); hcRenderAll(); }
+function hcBest(pid,ev){ let b=-1; hcRecs.forEach(r=>{ if(r.pid===pid&&r.ev===ev&&r.n>b) b=r.n; }); return b; }
+function hcRenderMine(){
+  const box=document.getElementById('hcMine');
+  if(!hcMe||!(roster||[]).some(p=>p.id===hcMe)){ box.innerHTML='<div class="b-empty">名前を選ぶと表示されます。</div>'; return; }
+  const mine=hcRecs.filter(r=>r.pid===hcMe);
+  let html='<div class="hc-grid"><span></span><span class="h">右まわし</span><span class="h">左まわし</span>'+
+    HC_PARTS.map(p=>'<span class="p">'+p[1]+'</span>'+HC_DIRS.map(d=>{
+      const ev=p[0]+'_'+d[0], last=mine.filter(r=>r.ev===ev).sort((a,b)=>b.ts-a.ts)[0], b=hcBest(hcMe,ev);
+      return '<span class="c">'+(b>=0?'ベスト '+b:'-')+'<small>前回 '+(last?last.n:'-')+'</small></span>';
+    }).join('')).join('')+'</div>';
+  const days={}; mine.forEach(r=>{ const k=r.d||''; days[k]=days[k]||{}; if(!(r.ev in days[k])||r.n>days[k][r.ev]) days[k][r.ev]=r.n; });
+  const dl=Object.keys(days).sort().reverse();
+  html+=hcCalHtml(days);
+  if(dl.length) html+='<label class="oo1-fl" style="margin-top:14px">日ごとの推移(その日のいちばん良い回数・★は自己ベスト)</label><div style="overflow-x:auto"><table class="hc-all"><tr><th style="text-align:left">日付</th>'+HC_PARTS.map(p=>HC_DIRS.map(d=>'<th>'+p[1]+'<br>'+d[1]+'</th>').join('')).join('')+'</tr>'+
+    dl.map(k=>'<tr><td class="nm">'+esc(k.slice(5).replace('-','/'))+'</td>'+HC_EVS.map(e=>{ const v=days[k][e[0]]; return '<td>'+(v===undefined?'<span style="color:var(--muted);font-weight:500">-</span>':v+(v===hcBest(hcMe,e[0])?'<span style="color:var(--accent)">★</span>':''))+'</td>'; }).join('')+'</tr>').join('')+'</table></div>';
+  const hist=[...mine].sort((a,b)=>b.ts-a.ts).slice(0,12);
+  if(hist.length) html+='<label class="oo1-fl" style="margin-top:14px">最近の入力(まちがえたら✕で消せます)</label>'+hist.map(r=>'<div class="hc-row"><span style="font-size:12px;color:var(--muted);width:44px">'+esc((r.d||'').slice(5).replace('-','/'))+'</span><span class="n">'+esc(hcEvName(r.ev))+'</span><span class="v">'+r.n+'回</span><button class="x" onclick="hcDel(\''+r.id+'\')">✕</button></div>').join('');
+  box.innerHTML=html;
+}
+function hcCalHtml(days){
+  if(!hcCalYM) hcCalYM=hcToday().slice(0,7);
+  const y=+hcCalYM.slice(0,4), m=+hcCalYM.slice(5,7), first=new Date(y,m-1,1).getDay(), n=new Date(y,m,0).getDate(), today=hcToday();
+  let g='<div class="hc-cal">'+['日','月','火','水','木','金','土'].map(w=>'<span class="w">'+w+'</span>').join('');
+  for(let i=0;i<first;i++) g+='<span class="dd blank"></span>';
+  for(let dd=1;dd<=n;dd++){
+    const k=hcCalYM+'-'+String(dd).padStart(2,'0'), has=!!days[k];
+    g+='<span class="dd'+(has?' has':'')+(k===today?' today':'')+(k===hcCalSel?' sel':'')+'"'+(has?' onclick="hcCalSel=\''+k+'\';hcRenderMine()"':'')+'>'+dd+'</span>';
+  }
+  g+='</div>';
+  const cnt=Object.keys(days).filter(k=>k.slice(0,7)===hcCalYM).length;
+  let detail='';
+  if(hcCalSel&&days[hcCalSel]) detail='<div class="hc-day"><b>'+(+hcCalSel.slice(5,7))+'/'+(+hcCalSel.slice(8,10))+' の記録</b><br>'+HC_EVS.filter(e=>e[0] in days[hcCalSel]).map(e=>esc(e[1])+' <b>'+days[hcCalSel][e[0]]+'回</b>').join('　')+'</div>';
+  return '<div class="hc-cal-head"><button onclick="hcCalMove(-1)">‹</button><b>'+y+'年'+m+'月 <span style="font-size:11.5px;color:var(--muted);font-weight:700">練習した日 '+cnt+'日</span></b><button onclick="hcCalMove(1)">›</button></div>'+g+detail;
+}
+function hcCalMove(k){
+  const y=+hcCalYM.slice(0,4), m=+hcCalYM.slice(5,7)-1+k, dt=new Date(y,m,1);
+  hcCalYM=dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0'); hcRenderMine();
+}
+function hcRenderAll(){
+  const box=document.getElementById('hcAll'), list=roster||[];
+  if(!list.length){ box.innerHTML='<div class="b-empty">メンバーが未登録です。</div>'; return; }
+  const best={}; hcRecs.forEach(r=>{ const k=r.pid+'|'+r.ev; if(!(k in best)||r.n>best[k]) best[k]=r.n; });
+  const rows=[...list];
+  if(hcSort) rows.sort((x,y)=>(best[y.id+'|'+hcSort]??-1)-(best[x.id+'|'+hcSort]??-1));
+  const head='<tr><th style="text-align:left" onclick="hcSort=\'\';hcRenderAll()">名前</th>'+HC_PARTS.map(p=>HC_DIRS.map(d=>{ const ev=p[0]+'_'+d[0]; return '<th class="'+(hcSort===ev?'on':'')+'" onclick="hcSort=\''+ev+'\';hcRenderAll()">'+p[1]+'<br>'+d[1]+'</th>'; }).join('')).join('')+'</tr>';
+  box.innerHTML='<table class="hc-all">'+head+rows.map(p=>'<tr class="'+(p.id===hcMe?'me':'')+'"><td class="nm">'+esc(p.name)+'</td>'+HC_EVS.map(e=>{ const v=best[p.id+'|'+e[0]]; return '<td>'+(v===undefined?'<span style="color:var(--muted);font-weight:500">-</span>':v)+'</td>'; }).join('')+'</tr>').join('')+'</table>';
+}
+function hcHowto(){
+  showModal('<video src="hc-howto.mp4#t=0.5" controls playsinline preload="metadata" style="width:100%;max-height:72vh;border-radius:10px;background:#000"></video><div class="vl-mbtns"><button class="ok" onclick="closeModal()">閉じる</button></div>');
+}
+async function hcSave(){
+  if(hcBusy) return;
+  if(!hcMe||!(roster||[]).some(p=>p.id===hcMe)){ toast('自分の名前を選んでください'); return; }
+  const di=document.getElementById('hcDate');
+  if(!hcDateTouched||!di.value) di.value=hcToday();
+  const d=di.value, now=Date.now(), add=[];
+  if(d>hcToday()){ toast('未来の日付には記録できません'); return; }
+  for(const e of HC_EVS){
+    const el=document.getElementById('hcIn_'+e[0]), v=el.value.trim();
+    if(v==='') continue;
+    const n=Number(v);
+    if(!Number.isInteger(n)||n<0||n>99){ toast(e[1]+'の回数は0〜99で入れてください'); el.focus(); return; }
+    add.push({id:hcMe+'_'+now+'_'+e[0], pid:hcMe, ev:e[0], n, d, ts:now});
+  }
+  if(!add.length){ toast('回数を入れてください'); return; }
+  const btn=document.getElementById('hcSaveBtn'); hcBusy=true; btn.disabled=true; btn.textContent='保存中…';
+  try{
+    let mine;
+    try{ mine=hcParse(hcMe, await hcGetStrict(hcKey(hcMe))); }catch(e){ toast('⚠️ 通信できませんでした。もう一度押してください'); return; }
+    const before={}; add.forEach(a=>{ before[a.ev]=-1; mine.forEach(r=>{ if(r.ev===a.ev&&r.n>before[a.ev]) before[a.ev]=r.n; }); });
+    hcSeq++;
+    hcRecs=hcRecs.filter(r=>r.pid!==hcMe).concat(mine,add);
+    if(!await bDataSave(hcKey(hcMe), hcPack(hcMe))){ hcRecs=hcRecs.filter(r=>!add.includes(r)); return; }
+    HC_EVS.forEach(e=>document.getElementById('hcIn_'+e[0]).value='');
+    hcDateTouched=false; di.value=hcToday(); hcCalSel=d; hcCalYM=d.slice(0,7);
+    hcRenderMine(); hcRenderAll();
+    const pb=add.filter(a=>before[a.ev]>=0&&a.n>before[a.ev]).map(a=>hcEvName(a.ev));
+    toast(pb.length?'🎉 自己ベスト更新!('+pb.join('・')+')':'記録しました');
+  }finally{ hcBusy=false; btn.disabled=false; btn.textContent='記録する'; }
+}
+async function hcDel(id){
+  const rec=hcRecs.find(r=>r.id===id); if(!rec||hcBusy) return;
+  if(!confirm(hcEvName(rec.ev)+' '+rec.n+'回 の記録を消しますか?')) return;
+  hcBusy=true;
+  try{
+    let mine;
+    try{ mine=hcParse(rec.pid, await hcGetStrict(hcKey(rec.pid))); }catch(e){ toast('⚠️ 通信できませんでした。もう一度押してください'); return; }
+    hcSeq++;
+    hcRecs=hcRecs.filter(r=>r.pid!==rec.pid).concat(mine.filter(r=>r.id!==id));
+    if(await bDataSave(hcKey(rec.pid), hcPack(rec.pid))) toast('消しました');
+    hcRenderMine(); hcRenderAll();
+  }finally{ hcBusy=false; }
+}
+function hcBeep(freq,dur,type){
+  try{
+    if(!hcAudio) hcAudio=new (window.AudioContext||window.webkitAudioContext)();
+    if(hcAudio.state==='suspended') hcAudio.resume();
+    const o=hcAudio.createOscillator(), g=hcAudio.createGain(), t=hcAudio.currentTime;
+    o.type=type||'sine'; o.frequency.value=freq;
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(0.5,t+0.02); g.gain.setValueAtTime(0.5,t+dur-0.05); g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g); g.connect(hcAudio.destination); o.start(t); o.stop(t+dur);
+  }catch(e){}
+}
+// カウントダウンの声(VOICEVOX)。選んだ声だけ読み込み、読めなければ合図音で代わりにする
+const HC_VOICES=[['metan','四国めたん'],['zunda','ずんだもん'],['tsumugi','春日部つむぎ'],['ryusei','青山龍星']];
+const HC_PHRASES=['3','2','1','go','n10','n5','end'];
+const hcVoice={};
+let hcVoiceSel=safeLSget('hcVoiceSel'); if(!HC_VOICES.some(v=>v[0]===hcVoiceSel)) hcVoiceSel='metan';
+function hcVoiceLoad(){
+  const v=hcVoiceSel;
+  if(!hcAudio||hcVoice[v]) return; hcVoice[v]={};
+  HC_PHRASES.forEach(k=>fetch('hc-voice-'+v+'-'+k+'.mp3').then(r=>r.arrayBuffer()).then(b=>new Promise((ok,ng)=>hcAudio.decodeAudioData(b,ok,ng))).then(buf=>{ hcVoice[v][k]=buf; }).catch(()=>{}));
+}
+function hcSay(k,freq,dur){
+  try{
+    const buf=hcVoice[hcVoiceSel]&&hcVoice[hcVoiceSel][k];
+    if(buf){ const src=hcAudio.createBufferSource(); src.buffer=buf; src.connect(hcAudio.destination); src.start(); return; }
+  }catch(e){}
+  if(freq) hcBeep(freq,dur);
+}
+function hcRenderVoiceChips(){
+  document.getElementById('hcVoiceChips').innerHTML=HC_VOICES.map(v=>'<span class="oo1-chip '+(v[0]===hcVoiceSel?'on':'')+'" onclick="hcPickVoice(\''+v[0]+'\')">'+v[1]+'</span>').join('');
+  document.getElementById('hcVoiceCredit').textContent='声: VOICEVOX:'+HC_VOICES.find(v=>v[0]===hcVoiceSel)[1];
+}
+function hcPickVoice(v){
+  hcVoiceSel=v; try{localStorage.setItem('hcVoiceSel',v);}catch(e){}
+  hcRenderVoiceChips();
+  try{ if(!hcAudio) hcAudio=new (window.AudioContext||window.webkitAudioContext)(); if(hcAudio.state==='suspended') hcAudio.resume(); }catch(e){}
+  hcVoiceLoad();
+  const t=setInterval(()=>{ if(hcVoice[v]&&hcVoice[v].go){ clearInterval(t); if(hcVoiceSel===v&&!hcTimer) hcSay('go'); } },100); setTimeout(()=>clearInterval(t),4000); // 試し聞き
+}
+function hcSetTime(txt,end){ const el=document.getElementById('hcTime'); el.textContent=txt; el.classList.toggle('end',!!end); }
+function hcToggle(){
+  const btn=document.getElementById('hcGo'), sub=document.getElementById('hcTimerSub');
+  if(hcTimer){ clearInterval(hcTimer); hcTimer=null; try{ hcWake&&hcWake.release(); }catch(e){} hcWake=null; hcSetTime(HC_SEC); btn.textContent='▶ スタート'; btn.classList.remove('stop'); sub.textContent='スタートを押すと3秒後に始まります'; return; }
+  try{ if(navigator.audioSession) navigator.audioSession.type='playback'; }catch(e){} // iPhoneのマナーモードでもブザーを鳴らす
+  hcBeep(1,0.05); // iPhoneで音を鳴らせるようにタップ時に音声を起こす
+  hcVoiceLoad();
+  try{ navigator.wakeLock&&navigator.wakeLock.request('screen').then(l=>{ hcWake=l; }).catch(()=>{}); }catch(e){}
+  btn.textContent='■ やめる'; btn.classList.add('stop');
+  sub.textContent=hcEvName(hcEv)+' 用意…';
+  const t0=Date.now(); let lastShown=null, lastLeft=null;
+  hcTimer=setInterval(()=>{
+    const el=(Date.now()-t0)/1000;
+    if(el<3){ const c=3-Math.floor(el); if(c!==lastShown){ lastShown=c; hcSetTime(c); hcSay(String(c),660,0.12); } return; }
+    const left=Math.max(0,Math.ceil(HC_SEC-(el-3)));
+    if(lastShown!=='go'){ lastShown='go'; hcSay('go',1320,0.35); sub.textContent=hcEvName(hcEv)+' スタート!'; }
+    hcSetTime(left);
+    if(left!==lastLeft){ // 残り10秒・5秒・3・2・1を声で
+      lastLeft=left;
+      if(left===10) hcSay('n10'); else if(left===5) hcSay('n5'); else if(left>=1&&left<=3) hcSay(String(left),660,0.12);
+    }
+    if(left<=0){
+      clearInterval(hcTimer); hcTimer=null; try{ hcWake&&hcWake.release(); }catch(e){} hcWake=null;
+      hcSetTime(0,true); hcBeep(220,0.7,'square'); setTimeout(()=>hcSay('end'),650);
+      try{ navigator.vibrate&&navigator.vibrate([400,100,400]); }catch(e){}
+      btn.textContent='▶ もう一回'; btn.classList.remove('stop');
+      sub.textContent='終了!回数を下に入れてください';
+      const inp=document.getElementById('hcIn_'+hcEv); if(inp){ inp.scrollIntoView({behavior:'smooth',block:'center'}); }
+    }
+  },100);
 }
 async function oo1RedeemTap(pid){
   if(!bCoachPass){ toast('🔒 🍦の精算はコーチモードでのみできます'); openCoach(); return; }
