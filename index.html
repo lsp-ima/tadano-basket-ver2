@@ -3370,7 +3370,7 @@ let updChecking=false;
 async function appUpdateCheck(){
   if(updChecking||document.visibilityState!=='visible') return;
   if(typeof hcTimer!=='undefined'&&hcTimer) return; // タイマー中は読み込み直さない
-  const ae=document.activeElement; if(ae&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae.tagName)) return; // 入力中もやめる
+  const ae=document.activeElement; if(ae&&/^(INPUT|TEXTAREA)$/.test(ae.tagName)&&ae.offsetParent&&ae.value) return; // 見えている欄に入力中ならやめる
   if([...document.querySelectorAll('#hcInputs input')].some(i=>i.value)) return;
   const mine=Date.parse(document.lastModified); if(!mine) return;
   updChecking=true;
