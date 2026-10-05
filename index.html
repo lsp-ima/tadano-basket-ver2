@@ -570,12 +570,17 @@ function formatSchedTime(val) {
 // スプレッドシートの1セルは50,000文字まで。超える値は複数キーに分割して保存する
 const BDATA_CHUNK = 45000;
 async function bDataGetRaw(key){
-  try{
-    const url = BBS_API + '?' + new URLSearchParams({action:'data_get', key:key}).toString();
-    const r = await fetch(url, {method:'GET'});
-    const j = await r.json();
-    return (j && j.ok) ? (j.value||'') : '';
-  }catch(e){ return ''; }
+  // GASが混んで失敗した時に「空」と見なすと、名簿が初期値に戻りマイプレーが消えて見えるので、3回まで読み直す
+  for(let a=0;a<3;a++){
+    try{
+      const url = BBS_API + '?' + new URLSearchParams({action:'data_get', key:key}).toString();
+      const r = await fetch(url, {method:'GET'});
+      const j = await r.json();
+      if(j && j.ok) return j.value||'';
+    }catch(e){}
+    await new Promise(res=>setTimeout(res, 700*(a+1)));
+  }
+  return '';
 }
 async function bDataGet(key){
   const v = await bDataGetRaw(key);
@@ -3402,11 +3407,30 @@ let hcDateTouched=false, hcCalYM=null, hcCalSel=null;
 let hcBusy=false, hcLoadErr=false, hcWake=null, hcSeq=0;
 function hcKey(pid){ return 'hc_'+pid; }
 async function hcGetStrict(key){
-  const r=await fetch(BBS_API+'?'+new URLSearchParams({action:'data_get', key:key}).toString());
-  const j=await r.json();
-  if(!j||!j.ok) throw new Error('get');
-  const v=j.value||'';
-  return v.indexOf('#CHUNKED:')===0 ? await bDataGet(key) : v;
+  for(let a=0;a<3;a++){
+    try{
+      const r=await fetch(BBS_API+'?'+new URLSearchParams({action:'data_get', key:key}).toString());
+      const j=await r.json();
+      if(j&&j.ok){ const v=j.value||''; return v.indexOf('#CHUNKED:')===0 ? await bDataGet(key) : v; }
+    }catch(e){}
+    await new Promise(res=>setTimeout(res, 700*(a+1)));
+  }
+  throw new Error('get');
+}
+// まとめキーの中の自分の分を、自分のキーの中身で置き換える。同時に書いた子に上書きされたら読み直してやり直す
+async function hcAggPut(pid){
+  const mine=JSON.parse(hcPack(pid));
+  for(let a=0;a<4;a++){
+    try{
+      const v=await hcGetStrict('hc_all'); let o={}; try{ o=v?JSON.parse(v):{}; }catch(e){ o={}; }
+      o[pid]=mine;
+      if(!await bDataSave('hc_all', JSON.stringify(o))) continue;
+      await new Promise(res=>setTimeout(res, 400+Math.random()*800));
+      const chk=await hcGetStrict('hc_all'); let c={}; try{ c=JSON.parse(chk||'{}'); }catch(e){}
+      if(JSON.stringify(c[pid])===JSON.stringify(mine)) return true;
+    }catch(e){}
+  }
+  return false;
 }
 function hcParse(pid,v){
   let a=[]; try{ a=v?JSON.parse(v):[]; }catch(e){ a=[]; }
@@ -3414,10 +3438,13 @@ function hcParse(pid,v){
 }
 function hcPack(pid){ return JSON.stringify(hcRecs.filter(r=>r.pid===pid).map(r=>[r.ev,r.n,r.d,r.ts])); }
 async function hcLoad(){
-  const seq=++hcSeq, list=roster||[], out=[]; let i=0, err=false;
-  const work=async()=>{ while(i<list.length){ const p=list[i++]; try{ out.push(...hcParse(p.id, await hcGetStrict(hcKey(p.id)))); }catch(e){ err=true; } } };
-  await Promise.all(Array.from({length:6},work));
+  const seq=++hcSeq, out=[]; let err=false;
+  try{
+    const v=await hcGetStrict('hc_all'); let o={}; try{ o=v?JSON.parse(v):{}; }catch(e){ o={}; err=true; }
+    Object.keys(o).forEach(pid=>out.push(...hcParse(pid, JSON.stringify(o[pid]||[]))));
+  }catch(e){ err=true; }
   if(seq!==hcSeq) return false; // 途中で保存・削除・再読み込みがあったら古い結果は捨てる
+  if(err&&hcRecs.length) { hcLoadErr=true; return true; } // 読めなかった時は今の表示を残す
   hcRecs=out; hcLoadErr=err; return true;
 }
 let hcInputsDone=false;
@@ -3521,6 +3548,7 @@ async function hcSave(){
     hcSeq++;
     hcRecs=hcRecs.filter(r=>r.pid!==hcMe).concat(mine,add);
     if(!await bDataSave(hcKey(hcMe), hcPack(hcMe))){ hcRecs=hcRecs.filter(r=>!add.includes(r)); return; }
+    hcAggPut(hcMe); // みんなの記録用のまとめにも反映(自分の記録は上で保存済み)
     HC_EVS.forEach(e=>document.getElementById('hcIn_'+e[0]).value='');
     hcDateTouched=false; di.value=hcToday(); hcCalSel=d; hcCalYM=d.slice(0,7);
     hcRenderMine(); hcRenderAll();
@@ -3537,7 +3565,7 @@ async function hcDel(id){
     try{ mine=hcParse(rec.pid, await hcGetStrict(hcKey(rec.pid))); }catch(e){ toast('⚠️ 通信できませんでした。もう一度押してください'); return; }
     hcSeq++;
     hcRecs=hcRecs.filter(r=>r.pid!==rec.pid).concat(mine.filter(r=>r.id!==id));
-    if(await bDataSave(hcKey(rec.pid), hcPack(rec.pid))) toast('消しました');
+    if(await bDataSave(hcKey(rec.pid), hcPack(rec.pid))){ toast('消しました'); hcAggPut(rec.pid); }
     hcRenderMine(); hcRenderAll();
   }finally{ hcBusy=false; }
 }
