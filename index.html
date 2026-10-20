@@ -3411,11 +3411,28 @@ async function hcGetStrict(key){
     try{
       const r=await fetch(BBS_API+'?'+new URLSearchParams({action:'data_get', key:key}).toString());
       const j=await r.json();
-      if(j&&j.ok){ const v=j.value||''; return v.indexOf('#CHUNKED:')===0 ? await bDataGet(key) : v; }
+      if(j&&j.ok){ const v=j.value||''; if(v.indexOf('#CHUNKED:')===0){ const w=await bDataGet(key); if(!w) throw new Error('chunk'); return w; } return v; }
     }catch(e){}
     await new Promise(res=>setTimeout(res, 700*(a+1)));
   }
   throw new Error('get');
+}
+const HC_SHARDS=['hc_s0','hc_s1','hc_s2','hc_s3'];
+function hcShard(pid){ return HC_SHARDS[(parseInt(String(pid).replace(/\D/g,''),10)||0)%4]; }
+// まとめキーの中の自分の分を、自分のキーの中身で置き換える。読めなかった時は空と見なさずやり直す。同時に書いた子に上書きされたら読み直してやり直す
+async function hcAggPut(pid){
+  const mine=JSON.parse(hcPack(pid)), sk=hcShard(pid);
+  for(let a=0;a<4;a++){
+    try{
+      const v=await hcGetStrict(sk); const o=v?JSON.parse(v):{};
+      o[pid]=mine;
+      if(!await bDataSave(sk, JSON.stringify(o))) continue;
+      await new Promise(res=>setTimeout(res, 400+Math.random()*800));
+      const c=JSON.parse((await hcGetStrict(sk))||'{}');
+      if(JSON.stringify(c[pid])===JSON.stringify(mine)) return true;
+    }catch(e){}
+  }
+  return false;
 }
 function hcParse(pid,v){
   let a=[]; try{ a=v?JSON.parse(v):[]; }catch(e){ a=[]; }
@@ -3423,13 +3440,17 @@ function hcParse(pid,v){
 }
 function hcPack(pid){ return JSON.stringify(hcRecs.filter(r=>r.pid===pid).map(r=>[r.ev,r.n,r.d,r.ts])); }
 async function hcLoad(){
-  // 全員分を1つにまとめると5万字の上限を超えて分割保存になり、読み損ねた時に他の人の分が消えるため、1人1キーを直接読む
+  // まとめは4つのキー(hc_s0〜3)に分ける。1本にすると5万字を超えて分割保存になり、読み損ねた時に他の人の分が消えた。1人1キーを24回読むのはGASが遅くて使えない
   const seq=++hcSeq; let err=false;
-  const pids=(roster||[]).map(p=>p.id);
-  if(hcMe&&pids.indexOf(hcMe)<0) pids.push(hcMe);
-  const res=await Promise.all(pids.map(async pid=>{ try{ return hcParse(pid, await hcGetStrict(hcKey(pid))); }catch(e){ err=true; return null; } }));
+  const res=await Promise.all(HC_SHARDS.map(async sk=>{ try{ const v=await hcGetStrict(sk); const o=v?JSON.parse(v):{}; return o&&typeof o==='object'?o:{}; }catch(e){ err=true; return null; } }));
+  let mineRecs=null; if(hcMe){ try{ mineRecs=hcParse(hcMe, await hcGetStrict(hcKey(hcMe))); }catch(e){} }
   if(seq!==hcSeq) return false; // 途中で保存・削除・再読み込みがあったら古い結果は捨てる
-  const out=[]; res.forEach((r,i)=>{ if(r) out.push(...r); else out.push(...hcRecs.filter(x=>x.pid===pids[i])); }); // 読めなかった人は今の表示を残す
+  const out=[], seen={};
+  res.forEach((o,i)=>{
+    if(o){ Object.keys(o).forEach(pid=>{ seen[pid]=1; if(!(pid===hcMe&&mineRecs)) out.push(...hcParse(pid, JSON.stringify(o[pid]||[]))); }); }
+    else hcRecs.forEach(r=>{ if(HC_SHARDS.indexOf(hcShard(r.pid))===i && !(r.pid===hcMe&&mineRecs)) out.push(r); }); // 読めなかった所は今の表示を残す
+  });
+  if(mineRecs) out.push(...mineRecs);
   hcRecs=out; hcLoadErr=err; return true;
 }
 let hcInputsDone=false;
@@ -3535,7 +3556,7 @@ async function hcSave(){
     if(!await bDataSave(hcKey(hcMe), hcPack(hcMe))){ hcRecs=hcRecs.filter(r=>!add.includes(r)); return; }
     HC_EVS.forEach(e=>document.getElementById('hcIn_'+e[0]).value='');
     hcDateTouched=false; di.value=hcToday(); hcCalSel=d; hcCalYM=d.slice(0,7);
-    hcRenderMine(); hcRenderAll();
+    hcRenderMine(); hcRenderAll(); hcAggPut(hcMe);
     const pb=add.filter(a=>before[a.ev]>=0&&a.n>before[a.ev]).map(a=>hcEvName(a.ev));
     toast(pb.length?'🎉 自己ベスト更新!('+pb.join('・')+')':'記録しました');
   }finally{ hcBusy=false; btn.disabled=false; btn.textContent='記録する'; }
@@ -3549,7 +3570,7 @@ async function hcDel(id){
     try{ mine=hcParse(rec.pid, await hcGetStrict(hcKey(rec.pid))); }catch(e){ toast('⚠️ 通信できませんでした。もう一度押してください'); return; }
     hcSeq++;
     hcRecs=hcRecs.filter(r=>r.pid!==rec.pid).concat(mine.filter(r=>r.id!==id));
-    if(await bDataSave(hcKey(rec.pid), hcPack(rec.pid)))toast('消しました');
+    if(await bDataSave(hcKey(rec.pid), hcPack(rec.pid))){ toast('消しました'); hcAggPut(rec.pid); }
     hcRenderMine(); hcRenderAll();
   }finally{ hcBusy=false; }
 }
