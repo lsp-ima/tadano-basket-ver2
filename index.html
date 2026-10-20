@@ -3417,34 +3417,19 @@ async function hcGetStrict(key){
   }
   throw new Error('get');
 }
-// まとめキーの中の自分の分を、自分のキーの中身で置き換える。同時に書いた子に上書きされたら読み直してやり直す
-async function hcAggPut(pid){
-  const mine=JSON.parse(hcPack(pid));
-  for(let a=0;a<4;a++){
-    try{
-      const v=await hcGetStrict('hc_all'); let o={}; try{ o=v?JSON.parse(v):{}; }catch(e){ o={}; }
-      o[pid]=mine;
-      if(!await bDataSave('hc_all', JSON.stringify(o))) continue;
-      await new Promise(res=>setTimeout(res, 400+Math.random()*800));
-      const chk=await hcGetStrict('hc_all'); let c={}; try{ c=JSON.parse(chk||'{}'); }catch(e){}
-      if(JSON.stringify(c[pid])===JSON.stringify(mine)) return true;
-    }catch(e){}
-  }
-  return false;
-}
 function hcParse(pid,v){
   let a=[]; try{ a=v?JSON.parse(v):[]; }catch(e){ a=[]; }
   return (Array.isArray(a)?a:[]).map(x=>({id:pid+'_'+x[3]+'_'+x[0], pid, ev:x[0], n:x[1], d:x[2], ts:x[3]}));
 }
 function hcPack(pid){ return JSON.stringify(hcRecs.filter(r=>r.pid===pid).map(r=>[r.ev,r.n,r.d,r.ts])); }
 async function hcLoad(){
-  const seq=++hcSeq, out=[]; let err=false;
-  try{
-    const v=await hcGetStrict('hc_all'); let o={}; try{ o=v?JSON.parse(v):{}; }catch(e){ o={}; err=true; }
-    Object.keys(o).forEach(pid=>out.push(...hcParse(pid, JSON.stringify(o[pid]||[]))));
-  }catch(e){ err=true; }
+  // 全員分を1つにまとめると5万字の上限を超えて分割保存になり、読み損ねた時に他の人の分が消えるため、1人1キーを直接読む
+  const seq=++hcSeq; let err=false;
+  const pids=(roster||[]).map(p=>p.id);
+  if(hcMe&&pids.indexOf(hcMe)<0) pids.push(hcMe);
+  const res=await Promise.all(pids.map(async pid=>{ try{ return hcParse(pid, await hcGetStrict(hcKey(pid))); }catch(e){ err=true; return null; } }));
   if(seq!==hcSeq) return false; // 途中で保存・削除・再読み込みがあったら古い結果は捨てる
-  if(err&&hcRecs.length) { hcLoadErr=true; return true; } // 読めなかった時は今の表示を残す
+  const out=[]; res.forEach((r,i)=>{ if(r) out.push(...r); else out.push(...hcRecs.filter(x=>x.pid===pids[i])); }); // 読めなかった人は今の表示を残す
   hcRecs=out; hcLoadErr=err; return true;
 }
 let hcInputsDone=false;
@@ -3548,7 +3533,6 @@ async function hcSave(){
     hcSeq++;
     hcRecs=hcRecs.filter(r=>r.pid!==hcMe).concat(mine,add);
     if(!await bDataSave(hcKey(hcMe), hcPack(hcMe))){ hcRecs=hcRecs.filter(r=>!add.includes(r)); return; }
-    hcAggPut(hcMe); // みんなの記録用のまとめにも反映(自分の記録は上で保存済み)
     HC_EVS.forEach(e=>document.getElementById('hcIn_'+e[0]).value='');
     hcDateTouched=false; di.value=hcToday(); hcCalSel=d; hcCalYM=d.slice(0,7);
     hcRenderMine(); hcRenderAll();
@@ -3565,7 +3549,7 @@ async function hcDel(id){
     try{ mine=hcParse(rec.pid, await hcGetStrict(hcKey(rec.pid))); }catch(e){ toast('⚠️ 通信できませんでした。もう一度押してください'); return; }
     hcSeq++;
     hcRecs=hcRecs.filter(r=>r.pid!==rec.pid).concat(mine.filter(r=>r.id!==id));
-    if(await bDataSave(hcKey(rec.pid), hcPack(rec.pid))){ toast('消しました'); hcAggPut(rec.pid); }
+    if(await bDataSave(hcKey(rec.pid), hcPack(rec.pid)))toast('消しました');
     hcRenderMine(); hcRenderAll();
   }finally{ hcBusy=false; }
 }
